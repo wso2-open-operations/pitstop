@@ -58,8 +58,7 @@ public isolated service class JwtInterceptor {
             }
         }
 
-        log:printError(
-                string `${userInfo.email} is missing required permissions, only has ${userInfo.groups.toBalString()}`);
+        log:printError("User is missing required permissions");
 
         return <http:Forbidden>{body: {message: "Insufficient privileges!"}};
     }

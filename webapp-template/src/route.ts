@@ -13,6 +13,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+
 import { HomeIcon } from "lucide-react";
 import { CircleQuestionMark } from "lucide-react";
 import type { RouteObject } from "react-router-dom";
@@ -111,8 +112,13 @@ export const getActiveRoutes = (roles: string[]): RouteObject[] => {
   const routesObj: RouteObject[] = [];
   routes.forEach((routeObj) => {
     if (isIncludedRole(roles, routeObj.allowRoles)) {
+      const filteredChildren = routeObj.children
+        ? routeObj.children.filter((child) => isIncludedRole(roles, child.allowRoles))
+        : undefined;
+      
       routesObj.push({
         ...routeObj,
+        children: filteredChildren,
       });
     }
   });

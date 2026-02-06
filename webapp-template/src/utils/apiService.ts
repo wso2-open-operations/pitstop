@@ -70,6 +70,9 @@ export class APIService {
   }
 
   public static getInstance(): AxiosInstance {
+    if (!APIService._instance) {
+      throw new Error("APIService not initialized. Call constructor first.");
+    }
     return APIService._instance;
   }
 
@@ -105,6 +108,21 @@ export class APIService {
         return config;
       },
       (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    APIService._instance.interceptors.response.use(
+      (response) => {
+        const endpoint = response.config.url || "";
+        APIService._cancelTokenMap.delete(endpoint);
+        return response;
+      },
+      (error) => {
+        if (!axios.isCancel(error)) {
+          const endpoint = error.config?.url || "";
+          APIService._cancelTokenMap.delete(endpoint);
+        }
         return Promise.reject(error);
       }
     );

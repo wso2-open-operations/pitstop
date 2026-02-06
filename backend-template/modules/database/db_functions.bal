@@ -13,6 +13,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+
 import ballerina/sql;
 
 # Fetch sample collections.
@@ -49,11 +50,13 @@ public isolated function fetchSampleCollection(int id) returns SampleCollection|
 # + sampleCollection - Sample collection payload
 # + createdBy - Person who created the sample collection
 # + return - Id of the sample collection|Error
-public isolated function addSampleCollection(AddSampleCollection sampleCollection, string createdBy) returns int|error {
+public isolated function addSampleCollection(AddSampleCollection sampleCollection, string createdBy) returns string|int?|error {
     sql:ExecutionResult|error executionResults = databaseClient->execute(addSampleCollectionQuery(sampleCollection, createdBy));
     if executionResults is error {
         return executionResults;
     }
-
-    return <int>executionResults.lastInsertId;
+    if executionResults.lastInsertId is int {
+        return executionResults.lastInsertId;
+    }
+    return error("Last insert id not available");
 }

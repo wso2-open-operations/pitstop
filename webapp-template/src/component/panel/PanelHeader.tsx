@@ -42,6 +42,7 @@ function PanelHeader(props: {
           <Tooltip title={"Refresh Page"}>
             <IconButton
               size="small"
+              aria-label="Refresh page"
               onClick={() => {
                 props.refresh && props.refresh();
               }}

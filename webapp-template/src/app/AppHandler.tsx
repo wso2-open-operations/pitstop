@@ -48,14 +48,14 @@ const AppHandler = () => {
   );
 
   useEffect(() => {
-    if (auth.status === "loading") {
+    if (auth.mode === "maintenance") {
+      setAppState("maintenance");
+    } else if (auth.status === "loading") {
       setAppState("loading");
     } else if (auth.status === "success") {
       setAppState("success");
     } else if (auth.status === "failed") {
       setAppState("failed");
-    } else if (auth.mode === "maintenance") {
-      setAppState("maintenance");
     }
   }, [auth.status, auth.mode]);
 

@@ -13,6 +13,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+
 import ballerina/sql;
 
 # Build query to add a sample collection.
@@ -23,7 +24,7 @@ import ballerina/sql;
 isolated function addSampleCollectionQuery(AddSampleCollection sampleCollection, string createdBy)
     returns sql:ParameterizedQuery =>
 `
-    INSERT INTO sample_collection
+    INSERT INTO sample_schema.sample_collection
     (
         sample_collection_name,
         sample_collection_created_by,
