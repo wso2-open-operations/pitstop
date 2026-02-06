@@ -57,8 +57,16 @@ const AppAuthProvider = (props: { children: React.ReactNode }) => {
     appState === AppState.Authenticated && setSessionWarningOpen(true);
   };
 
+  const onIdle = async () => {
+    setSessionWarningOpen(false);
+    setAppState(AppState.Loading);
+    await signOut();
+    setAppState(AppState.Unauthenticated);
+  };
+
   const { activate } = useIdleTimer({
     onPrompt,
+    onIdle,
     timeout,
     promptBeforeIdle,
     throttle: 500,

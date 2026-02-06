@@ -37,7 +37,7 @@ const createRouteLoader = (allowedRoles?: string[]) => {
     const userRoles = state.auth.roles;
 
     if (!isIncludedRole(userRoles, allowedRoles)) {
-      throw new Response("Unauthorized", { status: 403 });
+      throw new Response("Forbidden", { status: 403 })
     }
 
     return null;
