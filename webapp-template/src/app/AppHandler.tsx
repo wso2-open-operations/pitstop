@@ -14,18 +14,56 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { RouterProvider, createBrowserRouter } from "react-router-dom";
-
-import { useEffect, useMemo, useState } from "react";
-
+import { RouterProvider, createBrowserRouter, RouteObject } from "react-router-dom";
+import { useEffect, useState } from "react";
 import ErrorHandler from "@component/common/ErrorHandler";
 import PreLoader from "@component/common/PreLoader";
 import Layout from "@layout/Layout";
 import NotFoundPage from "@layout/pages/404";
 import MaintenancePage from "@layout/pages/Maintenance";
-import { RootState, useAppSelector } from "@slices/store";
+import { RootState, store, useAppSelector } from "@slices/store";
+import { isIncludedRole } from "@utils/utils";
+import { routes } from "../route";
+import type { RouteObjectWithRole } from "../types/types";
 
-import { getActiveRoutesV2, routes } from "../route";
+
+const createRouteLoader = (allowedRoles?: string[]) => {
+  return () => {
+    if (!allowedRoles || allowedRoles.length === 0) {
+      return null;
+    }
+
+    const state = store.getState();
+    const userRoles = state.auth.roles;
+
+    if (!isIncludedRole(userRoles, allowedRoles)) {
+      throw new Response("Unauthorized", { status: 403 });
+    }
+
+    return null;
+  };
+};
+
+const convertRoutesToStaticRoutes = (
+  routes: RouteObjectWithRole[],
+): RouteObject[] => {
+  return routes.map((route) => ({
+    path: route.path,
+    element: route.element,
+    loader: createRouteLoader(route.allowRoles),
+    errorElement: route.errorElement,
+    children: route.children ? convertRoutesToStaticRoutes(route.children) : undefined,
+  }));
+};
+
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Layout />,
+    errorElement: <NotFoundPage />,
+    children: convertRoutesToStaticRoutes(routes),
+  },
+]);
 
 const AppHandler = () => {
   const [appState, setAppState] = useState<"loading" | "success" | "failed" | "maintenance">(
@@ -33,19 +71,6 @@ const AppHandler = () => {
   );
 
   const auth = useAppSelector((state: RootState) => state.auth);
-
-  const router = useMemo(
-    () =>
-      createBrowserRouter([
-        {
-          path: "/",
-          element: <Layout />,
-          errorElement: <NotFoundPage />,
-          children: getActiveRoutesV2(routes, auth.roles),
-        },
-      ]),
-    [auth.roles],
-  );
 
   useEffect(() => {
     if (auth.mode === "maintenance") {
