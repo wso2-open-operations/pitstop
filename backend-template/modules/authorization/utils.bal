@@ -16,13 +16,19 @@
 
 #
 # + requiredRoles - Required Role list
-# + userRoles - Roles list, The user has
-# + return - Allow or not
-public isolated function checkPermissions(string[] requiredRoles, string[] userRoles) returns boolean {
-    if userRoles.length() == 0 && requiredRoles.length() > 0 {
+# + userRoles - Roles list, the user has
+# + return - Allow or not 
+public isolated function checkRoles(string[] requiredRoles, string[] userRoles) returns boolean {
+    if requiredRoles.length() > userRoles.length() {
         return false;
     }
 
-    final string[] & readonly userRolesReadOnly = userRoles.cloneReadOnly();
-    return requiredRoles.every(role => userRolesReadOnly.indexOf(role) !is ());
+    boolean allow = true;
+    foreach string role in requiredRoles {
+        if userRoles.indexOf(role) is () {
+            return false;
+        }
+    }
+
+    return allow;
 }

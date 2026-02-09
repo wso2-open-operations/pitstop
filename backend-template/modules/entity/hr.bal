@@ -14,27 +14,41 @@
 // specific language governing permissions and limitations
 // under the License.
 
-# Fetch Employee Data.
+import ballerina/graphql;
+
+// Employee Service Client.
+final graphql:Client employeeGqlClient = check initializeEmployeeServiceClient();
+
+# Retrieve Employee Data.
 #
-# + workEmail - WSO2 email address
-# + return - Employee | Error
-public isolated function fetchEmployeesBasicInfo(string workEmail) returns Employee|error {
+# + workEmail - WSO2 Email
+# + return - Employee Info
+public isolated function getEmployee(string workEmail) returns Employee|error {
+
+    //GraphQL query to fetch employee information
     string document = string `
         query employeeQuery ($workEmail: String!) {
             employee(email: $workEmail) {
-                employeeId,
                 workEmail,
                 firstName,
                 lastName,
-                jobRole,
                 employeeThumbnail,
+                location,
+                department,
+                team
             }
         }
     `;
 
-    EmployeeResponse|error response = hrClient->execute(document, {workEmail});
-    if response is error {
-        return response;
+    EmployeeResults|graphql:ClientError employeeData = employeeGqlClient->execute(document, {workEmail});
+
+    if employeeData is graphql:ClientError {
+        return handleGraphQlResultError(employeeData);
     }
-    return response.data.employee;
+
+    Employee? employee = employeeData.data.employee;
+
+    return employee is ()
+        ? error(string `No matching employee found for ${workEmail}`)
+        : employee;
 }

@@ -14,14 +14,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-# Client retry configuration for max retry attempts.
-public const int RETRY_COUNT = 3;
+# client retry configuration for max retry attempts.
+const int CONSTANT_RETRY_COUNT = 3;
 
-# Client retry configuration for wait interval in seconds.
-public const decimal RETRY_INTERVAL = 3.0;
+# client retry configuration for wait interval in seconds.
+const decimal CONSTANT_RETRY_INTERVAL = 3.0;
 
-# Client retry configuration for interval increment in seconds.
-public const float RETRY_BACKOFF_FACTOR = 2.0;
+# client retry configuration for interval increment in seconds.
+const float CONSTANT_RETRY_BACKOFF_FACTOR = 2.0;
 
-# Client retry configuration for maximum wait interval in seconds.
-public const decimal RETRY_MAX_INTERVAL = 20.0;
+# client retry configuration for maximum wait interval in seconds.
+const decimal CONSTANT_RETRY_MAX_INTERVAL = 20.0;

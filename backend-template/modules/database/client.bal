@@ -14,27 +14,24 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerinax/java.jdbc;
 import ballerinax/mysql;
-import ballerinax/mysql.driver as _;
 
-# Database Client Configuration.
 configurable DatabaseConfig databaseConfig = ?;
 
-configurable decimal connectTimeout = ?;
-
-DatabaseClientConfig databaseClientConfig = {
-    ...databaseConfig,
-    options: {
+final mysql:Client dbClient = check new (
+    user = databaseConfig.user,
+    password = databaseConfig.password,
+    database = databaseConfig.database,
+    host = databaseConfig.host,
+    options = {
         ssl: {
-            mode: mysql:SSL_REQUIRED
+            mode: mysql:SSL_PREFERRED
         },
-        connectTimeout: connectTimeout
+        connectTimeout: 10
+    },
+    connectionPool = {
+        maxOpenConnections: databaseConfig.maxOpenConnections,
+        maxConnectionLifeTime: databaseConfig.maxConnectionLifeTime,
+        minIdleConnections: databaseConfig.minIdleConnections
     }
-};
-
-function initSampleDbClient() returns mysql:Client|error
-=> new (...databaseClientConfig);
-
-# Database Client.
-final jdbc:Client databaseClient = check initSampleDbClient();
+);

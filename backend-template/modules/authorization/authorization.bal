@@ -13,53 +13,58 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+
 import ballerina/http;
 import ballerina/jwt;
 import ballerina/log;
 
-public configurable AppRoles authorizedRoles = ?;
+# JWT Configurations.
+configurable string[] authorizedRoles = ?;
+
+# Decode Asgardeo issued JWT.
+#
+# + jwtString - JWT token
+# + return - AsgardeoJwt or error
+public isolated function decodeAsgardeoJwt(string jwtString) returns AsgardeoJwt|error {
+    [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(jwtString);
+    return payload.cloneWithType();
+}
+
+# Decode the given JWT and return the user information. (Email, Roles)
+#
+# + jwtString - JWT token  
+# + authorizedRoles - Array of authorized roles
+# + return - User information
+public isolated function getUserInfo(string jwtString, string[] authorizedRoles) returns CustomJwtPayload|error {
+    log:printDebug("Retrieving user info from the given JWT.");
+    AsgardeoJwt {email, groups} = check decodeAsgardeoJwt(jwtString).ensureType();
+
+    if email.length() == 0 {
+        return error("No email found in the given JWT");
+    }
+
+    foreach string authorizedRole in authorizedRoles {
+        if groups.indexOf(authorizedRole) !is () {
+            return {email, groups};
+        }
+    }
+    log:printError(string `${email} is missing a group, only has ${groups.toBalString()}`);
+    return error("Insufficient Privileges");
+}
 
 # To handle authorization for each resource function invocation.
 public isolated service class JwtInterceptor {
-
     *http:RequestInterceptor;
     isolated resource function default [string... path](http:RequestContext ctx, http:Request req)
-        returns http:NextService|http:Forbidden|http:InternalServerError|error? {
+        returns http:NextService|http:Unauthorized|http:Forbidden|error? {
 
-        string|error idToken = req.getHeader(JWT_ASSERTION_HEADER);
-        if idToken is error {
-            string errorMsg = "Missing invoker info header!";
-            log:printError(errorMsg, idToken);
-            return <http:InternalServerError>{
-                body: {
-                    message: errorMsg
-                }
-            };
+        if req.method == http:HTTP_OPTIONS {
+            return ctx.next();
         }
 
-        [jwt:Header, jwt:Payload]|jwt:Error result = jwt:decode(idToken);
-        if result is jwt:Error {
-            string errorMsg = "Error while reading the Invoker info!";
-            log:printError(errorMsg, result);
-            return <http:InternalServerError>{body: {message: errorMsg}};
-        }
-
-        CustomJwtPayload|error userInfo = result[1].cloneWithType(CustomJwtPayload);
-        if userInfo is error {
-            string errorMsg = "Malformed Invoker info object!";
-            log:printError(errorMsg, userInfo);
-            return <http:InternalServerError>{body: {message: errorMsg}};
-        }
-
-        foreach anydata role in authorizedRoles.toArray() {
-            if userInfo.groups.some(r => r === role) {
-                ctx.set(HEADER_USER_INFO, userInfo);
-                return ctx.next();
-            }
-        }
-
-        log:printError("User is missing required permissions");
-
-        return <http:Forbidden>{body: {message: "Insufficient privileges!"}};
+        CustomJwtPayload {email, groups} = check getUserInfo(check req.getHeader(JWT_ASSERTION), authorizedRoles);
+        ctx.set(REQUESTED_BY_USER_EMAIL, email);
+        ctx.set(REQUESTED_BY_USER_ROLES, groups);
+        return ctx.next();
     }
 }
