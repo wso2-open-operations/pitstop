@@ -1,12 +1,9 @@
 -- Copyright (c) 2026 WSO2 LLC. (https://www.wso2.com).
-
 -- WSO2 LLC. licenses this file to you under the Apache License,
 -- Version 2.0 (the "License"); you may not use this file except
 -- in compliance with the License.
 -- You may obtain a copy of the License at
-
 -- http://www.apache.org/licenses/LICENSE-2.0
-
 -- Unless required by applicable law or agreed to in writing,
 -- software distributed under the License is distributed on an
 -- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,52 +18,74 @@ use se_wiki;
 CREATE TABLE `route` (
     `route_id` int NOT NULL AUTO_INCREMENT COMMENT 'Route ID',
     `parent_id` int DEFAULT NULL COMMENT 'Parent ID of route',
-    `label` varchar(100) DEFAULT NOT NULL COMMENT 'Label of route',
-    `title` varchar(50) DEFAULT NOT NULL COMMENT 'Page title',
-    `thumbnail` varchar(400) DEFAULT NULL COMMENT 'Page thumbnail',
-    `description` varchar(300) DEFAULT NULL COMMENT 'Page description',
+    `label` varchar(100) DEFAULT NULL COMMENT 'Label of route',
+    `title` varchar(50) DEFAULT NULL COMMENT 'Page title',
+    `thumbnail` varchar(300) DEFAULT NULL COMMENT 'Page thumbnail',
+    `description` text,
     `is_deleted` tinyint(1) DEFAULT '0' COMMENT 'Page deletion status',
-    `route_path` varchar(300) DEFAULT '/' COMMENT 'Route path',
-    `menu_item` varchar(50) DEFAULT NOT NULL COMMENT 'Menu item',
+    `route_path` varchar(300) DEFAULT NULL,
+    `menu_item` varchar(100) DEFAULT NULL,
     `styling_info` json DEFAULT NULL COMMENT 'Styling information',
     PRIMARY KEY (`route_id`),
     KEY `parent_id` (`parent_id`),
     CONSTRAINT `route_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `route` (`route_id`)
 );
-
-INSERT INTO
-    route (parent_id, label, title, description, is_deleted)
-VALUES
-    (
+INSERT INTO route (parent_id, label, title, description, is_deleted)
+VALUES (
         NULL,
         'home',
         'THIS . IS . YOUR',
         'Your platform to access sales resources to sell better!',
         0
     );
-
 CREATE TABLE `section` (
     `section_id` int NOT NULL AUTO_INCREMENT COMMENT 'Section ID',
-    `route_id` int DEFAULT NOT NULL COMMENT 'Route ID',
-    `title` varchar(300) DEFAULT NOT NULL COMMENT 'Section title',
+    `route_id` int DEFAULT NULL COMMENT 'Route ID',
+    `title` varchar(300) DEFAULT NULL COMMENT 'Section title',
     `is_deleted` tinyint(1) DEFAULT '0' COMMENT 'Deletion status',
     `section_type` enum('section', 'image') DEFAULT 'section' COMMENT 'Section type',
     `image_url` varchar(500) DEFAULT NULL COMMENT 'Section image',
     `redirect_url` varchar(500) DEFAULT NULL COMMENT 'Section redirect URL',
     `styling_info` json DEFAULT NULL COMMENT 'Styling information',
+    `section_order` int DEFAULT NULL,
     PRIMARY KEY (`section_id`),
     KEY `route_id` (`route_id`),
     CONSTRAINT `section_ibfk_1` FOREIGN KEY (`route_id`) REFERENCES `route` (`route_id`)
 );
 
-INSERT INTO section (section_id, route_id, title, description, section_type, section_order)
-VALUES (-4, NULL, 'Essentials', 'Essential content for all users', 'section', 0);
+INSERT INTO section (
+        section_id,
+        route_id,
+        title,
+        description,
+        section_type,
+        section_order
+    )
+VALUES (
+        -4,
+        NULL,
+        'Essentials',
+        'Essential content for all users',
+        'section',
+        0
+    );
 
 CREATE TABLE `content` (
     `content_id` int NOT NULL AUTO_INCREMENT COMMENT 'Content ID',
     `section_id` int DEFAULT NOT NULL COMMENT 'Section ID',
     `content_link` varchar(300) DEFAULT NOT NULL COMMENT 'Content link',
-    `content_type` enum('pdf', 'slides', 'mp4', 'youtube', 'page', 'docs', 'gsheet', 'lms', 'salesforce', 'external') DEFAULT 'external' COMMENT 'Content type',
+    `content_type` enum(
+        'pdf',
+        'slides',
+        'mp4',
+        'youtube',
+        'page',
+        'docs',
+        'gsheet',
+        'lms',
+        'salesforce',
+        'external'
+    ) DEFAULT 'external' COMMENT 'Content type',
     `description` varchar(300) DEFAULT NOT NULL COMMENT 'Content description',
     `thumbnail` varchar(300) DEFAULT NULL COMMENT 'Content thumbnail',
     `is_deleted` tinyint(1) DEFAULT '0' COMMENT 'Deletion status',
@@ -81,7 +100,7 @@ ALTER TABLE content
 ADD COLUMN is_visible TINYINT NOT NULL DEFAULT 1;
 
 ALTER TABLE content
-ADD COLUMN content_sub_type VARCHAR(200) DEFAULT NULL COMMENT 'Content subtype';
+ADD COLUMN content_sub_type VARCHAR(200) DEFAULT NULL COMMENT 'Content subtype'
 AFTER content_type;
 
 CREATE TABLE `user` (
@@ -166,7 +185,8 @@ BEGIN
         SET NEW.route_path = CONCAT(route_var, '/', NEW.label);
     END IF;
 END;
-//DELIMITER;
+//
+DELIMITER;
 
 -- Run this queries to after creating the trigger--
 UPDATE route
@@ -195,8 +215,7 @@ SET route_path =
     SELECT route_path AS path
     FROM RecursivePaths rs
     WHERE rs.route_id = route.route_id
-)
-
+);
 
 UPDATE section
 SET section_type = 'section'
@@ -213,6 +232,7 @@ BEGIN
     SELECT IFNULL(MAX(`route_order`), 0) INTO max_order FROM route;
     SET NEW.`route_order` = max_order + 1;
 END//
+DELIMITER ;
 
 ALTER TABLE content ADD COLUMN `content_order` INT;
 UPDATE content SET `content_order` = content_id;
@@ -227,7 +247,6 @@ BEGIN
 END//
 DELIMITER ;
 
-ALTER TABLE section ADD COLUMN `section_order` INT;
 UPDATE section SET `section_order` = section_id;
 DELIMITER //
 CREATE TRIGGER before_insert_section
@@ -242,14 +261,20 @@ DELIMITER ;
 
 ALTER TABLE route
 ADD COLUMN `isRouteVisible` TINYINT(1) DEFAULT 1 COMMENT 'Visibility status of the route (1 = visible, 0 = hidden)';
-
- ALTER TABLE content
-MODIFY COLUMN content_type ENUM('slides', 'youtube', 'page', 'gsheet', 'lms', 'salesforce', 'external', 'route_content');
-
+ALTER TABLE content
+MODIFY COLUMN content_type ENUM(
+        'slides',
+        'youtube',
+        'page',
+        'gsheet',
+        'lms',
+        'salesforce',
+        'external',
+        'route_content'
+    );
 ALTER TABLE content
 ADD COLUMN route_id INT,
-ADD COLUMN parent_content_id INT;
-
+    ADD COLUMN parent_content_id INT;
 
 CREATE TABLE `custom_buttons` (
     `id` INT NOT NULL AUTO_INCREMENT,
@@ -268,17 +293,13 @@ CREATE TABLE `custom_buttons` (
     PRIMARY KEY (`id`),
     FOREIGN KEY (`content_id`) REFERENCES `content` (`content_id`) ON DELETE CASCADE
 );
-
-ALTER TABLE custom_buttons
-CHANGE `order` `button_order` INT;
-
+ALTER TABLE custom_buttons CHANGE `order` `button_order` INT;
 CREATE TABLE pinned_content (
     `user_email` VARCHAR(255) NOT NULL,
     `content_id` INT NOT NULL,
     `pinned_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`user_email`, `content_id`)
 );
-
 CREATE TABLE `customer_testimonial` (
     `id` INT NOT NULL AUTO_INCREMENT,
     `logo_url` VARCHAR(500) NOT NULL,
@@ -290,14 +311,11 @@ CREATE TABLE `customer_testimonial` (
     `updated_by` VARCHAR(320),
     `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `is_visible` TINYINT(1) NOT NULL DEFAULT 1,
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (`id`)
-
-ALTER TABLE `customer_testimonial`
-ADD COLUMN `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_visible`;
 );
-
-ALTER TABLE `customer_testimonial` 
+ALTER TABLE `customer_testimonial`
 ADD COLUMN `is_shareable` TINYINT(1) NOT NULL DEFAULT 0;
-
 ALTER TABLE `tag`
 MODIFY COLUMN `tag_name` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL;

@@ -489,7 +489,7 @@ isolated function updateContentQuery(int contentId, types:UpdateContentPayload u
         sqlQueries.push(` thumbnail = ${updateContentPayload.thumbnail} `);
     }
 
-    if updateContentPayload.thumbnail is string {
+    if updateContentPayload.note is string {
         sqlQueries.push(` note = ${updateContentPayload.note} `);
     }
 

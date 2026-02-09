@@ -81,4 +81,5 @@ public const GET_PINNED_CONTENT_ERROR = "Error while fetching pinned content.";
 public const USER_INFO_HEADER_NOT_FOUND = "User information header not found";
 public const GET_TRENDING_CONTENT_ERROR = "Error while fetching trending contents";
 public const GET_SUGGESTED_CONTENT_ERROR = "Error while getting suggested contents";
+public const COMMENT_ID_MISMATCH_ERROR = "Comment ID mismatch between path and payload";
 public final regexp:RegExp URL = re `^(https?|ftp|smtp)://(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:/\S*)?$`;

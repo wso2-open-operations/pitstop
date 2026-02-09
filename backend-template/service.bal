@@ -1337,6 +1337,11 @@ service http:InterceptableService / on new http:Listener(9090) {
             };
         }
 
+        if !authorization:checkRoles([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
         int|error? result = database:updateRouteContent(contentPayload);
         if result is error || result is () {
             string customError = "Error while updating route content!";
@@ -1368,6 +1373,11 @@ service http:InterceptableService / on new http:Listener(9090) {
             };
         }
 
+        if !authorization:checkRoles([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
         error? result = database:DeleteRouteContent(contentId);
         if result is error {
             string customError = "Error while deleting route content!";
@@ -1396,6 +1406,11 @@ service http:InterceptableService / on new http:Listener(9090) {
             };
         }
 
+        if !authorization:checkRoles([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
         error? result = database:reparentRoutes(payload);
         if result is error {
             string customError = "Error while reparenting routes.";
@@ -1416,6 +1431,12 @@ service http:InterceptableService / on new http:Listener(9090) {
     # + return - Success or error responses
     resource function patch comments/[int commentId](http:RequestContext ctx, types:UpdateCommentPayload commentPayload)
         returns http:Ok|http:Forbidden|http:NotFound|http:BadRequest|http:InternalServerError {
+
+        if commentPayload.commentId != commentId {
+            log:printError(constants:COMMENT_ID_MISMATCH_ERROR, 
+                pathCommentId = commentId, payloadCommentId = commentPayload.commentId);
+            return http:BAD_REQUEST;
+        }
 
         string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
         if userGroups is error {
@@ -1445,7 +1466,13 @@ service http:InterceptableService / on new http:Listener(9090) {
             };
         }
 
-        types:CommentData commentData = <types:CommentData>data;
+        if data is () {
+            string notFoundError = "Comment not found or not owned by user.";
+            return <http:NotFound>{
+                body: {"message": notFoundError}
+            };
+        }
+        types:CommentData commentData = data;
 
         if !isAdmin {
             time:Utc now = time:utcNow();
@@ -1530,6 +1557,12 @@ service http:InterceptableService / on new http:Listener(9090) {
     resource function delete comments/[int commentId](http:RequestContext ctx,
             types:UpdateCommentPayload commentPayload)
         returns http:Ok|http:BadRequest|http:NotFound|http:Forbidden|http:InternalServerError {
+
+        if commentPayload.commentId != commentId {
+            log:printError(constants:COMMENT_ID_MISMATCH_ERROR, 
+                pathCommentId = commentId, payloadCommentId = commentPayload.commentId);
+            return http:BAD_REQUEST;
+        }
 
         string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
         if userGroups is error {
