@@ -317,5 +317,13 @@ CREATE TABLE `customer_testimonial` (
 );
 ALTER TABLE `customer_testimonial`
 ADD COLUMN `is_shareable` TINYINT(1) NOT NULL DEFAULT 0;
+
+CREATE TABLE `tag` (
+  `tag_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `color` varchar(10) DEFAULT NULL,
+  `is_deleted` tinyint(1) DEFAULT '0',
+  PRIMARY KEY (`tag_name`)
+);
+
 ALTER TABLE `tag`
 MODIFY COLUMN `tag_name` VARCHAR(255) COLLATE utf8mb4_bin NOT NULL;

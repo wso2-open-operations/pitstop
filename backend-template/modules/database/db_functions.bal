@@ -664,8 +664,8 @@ public isolated function DeleteRouteContent(int contentId) returns error? {
 # + return - Error or nil
 public isolated function reparentRoutes(types:ReParentRoutesPayload payload) returns error? {
     transaction {
-        sql:ParameterizedQuery[] reparentQueries = from int rid in payload.routeIds
-            select reparentRoutesQuery(payload.newParentId, [rid]);
+        sql:ParameterizedQuery[] reparentQueries = from int routeId in payload.routeIds
+            select reparentRoutesQuery(payload.newParentId, routeId);
 
         _ = check dbClient->batchExecute(reparentQueries);
         check commit;
@@ -714,7 +714,7 @@ public isolated function getCommentData(int commentId, string email) returns typ
 # + routeId - Route ID to update visibility
 # + payload - Route ID to update visibility
 # + return - error? if operation fails
-public isolated function updateRouteVisibility(string routeId, types:Routes payload) returns int|error? {
+public isolated function updateRouteVisibility(int routeId, types:Routes payload) returns int|error? {
     sql:ExecutionResult result = check dbClient->execute(updateRouteVisibilityQuery(routeId, payload));
     return result.affectedRowCount;
 }

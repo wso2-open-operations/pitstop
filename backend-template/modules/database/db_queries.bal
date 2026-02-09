@@ -465,10 +465,11 @@ isolated function updateContentQuery(int contentId, types:UpdateContentPayload u
         UPDATE
             content
         SET 
-            updated_by = ${userEmail},
         `;
 
     sql:ParameterizedQuery[] sqlQueries = [];
+
+    sqlQueries.push(` updated_by = ${userEmail} `);
 
     if updateContentPayload.description is string {
         sqlQueries.push(` description = ${updateContentPayload.description} `);
@@ -557,6 +558,10 @@ isolated function updateSectionQuery(types:UpdateSectionPayload updateSectionPay
 
     if updateSectionPayload.tags is string {
         sqlQueries.push(` tags = ${updateSectionPayload.tags} `);
+    }
+
+    if sqlQueries.length() == 0 {
+        return `SELECT 0 WHERE FALSE`;
     }
 
     sqlQuery = buildSqlUpdateQuery(sqlQuery, sqlQueries);
@@ -904,6 +909,11 @@ isolated function updateRouteContentQuery(types:UpdateRouteContentPayload payloa
         sqlQueries.push(` description = ${payload.description} `);
     }
 
+    // Guard against empty updates - return no-op query if no fields to update
+    if sqlQueries.length() == 0 {
+        return `SELECT 0 WHERE FALSE`;
+    }
+
     sqlQuery = buildSqlUpdateQuery(sqlQuery, sqlQueries);
     return sql:queryConcat(sqlQuery, ` WHERE content_id = ${payload.contentId} AND is_deleted = false`);
 }
@@ -923,58 +933,51 @@ isolated function DeleteRouteContentQuery(int contentId) returns sql:Parameteriz
 # Query to reparent routes to a new parent.
 #
 # + newParentId - New parent route ID
-# + routeIds - Array of route IDs to be reparented
+# + routeId - Route ID to be reparented
 # + return - SQL parameterized query    
-isolated function reparentRoutesQuery(int newParentId, int[] routeIds) returns sql:ParameterizedQuery {
-    sql:ParameterizedQuery[] blocks = [];
-
-    foreach int rid in routeIds {
-        blocks.push(`
-            WITH RECURSIVE new_tree AS (
-            SELECT
-                r.route_id,
-                ${newParentId} AS new_parent_id,
-                r.label,
-                (SELECT 
-                    CASE WHEN route_path = '/' THEN '' ELSE route_path END
+isolated function reparentRoutesQuery(int newParentId, int routeId) returns sql:ParameterizedQuery => `
+    WITH RECURSIVE new_tree AS (
+        SELECT
+            r.route_id,
+            ${newParentId} AS new_parent_id,
+            r.label,
+            (SELECT 
+                CASE WHEN route_path = '/' THEN '' ELSE route_path END
+            FROM route
+            WHERE route_id = ${newParentId}
+            LIMIT 1
+            ) AS base_path,
+            CONCAT(
+                (SELECT CASE WHEN route_path = '/' THEN '' ELSE route_path END
                 FROM route
                 WHERE route_id = ${newParentId}
                 LIMIT 1
-                ) AS base_path,
-                CONCAT(
-                (SELECT CASE WHEN route_path = '/' THEN '' ELSE route_path END
-                    FROM route
-                    WHERE route_id = ${newParentId}
-                    LIMIT 1
                 ),
                 '/', r.label
-                ) AS new_path
-            FROM route AS r
-            WHERE r.route_id = ${rid}
+            ) AS new_path
+        FROM route AS r
+        WHERE r.route_id = ${routeId}
 
-            UNION ALL
+        UNION ALL
 
-            SELECT
-                c.route_id,
-                p.new_parent_id,
-                c.label,
-                p.new_path AS base_path,
-                CONCAT(p.new_path, '/', c.label) AS new_path
-            FROM route AS c
-            JOIN new_tree AS p
-                ON c.parent_id = p.route_id
-            )
+        SELECT
+            c.route_id,
+            p.new_parent_id,
+            c.label,
+            p.new_path AS base_path,
+            CONCAT(p.new_path, '/', c.label) AS new_path
+        FROM route AS c
+        JOIN new_tree AS p
+            ON c.parent_id = p.route_id
+    )
 
-            UPDATE route AS tgt
-            JOIN new_tree AS src
-            ON tgt.route_id = src.route_id
-            SET
-            tgt.parent_id  = CASE WHEN tgt.route_id = ${rid} THEN src.new_parent_id ELSE tgt.parent_id END,
-            tgt.route_path = src.new_path
-        ;`);
-    }
-    return sql:queryConcat(...blocks);
-}
+    UPDATE route AS tgt
+    JOIN new_tree AS src
+        ON tgt.route_id = src.route_id
+    SET
+        tgt.parent_id  = CASE WHEN tgt.route_id = ${routeId} THEN src.new_parent_id ELSE tgt.parent_id END,
+        tgt.route_path = src.new_path
+`;
 
 # Query to update a comment.
 #
@@ -986,7 +989,8 @@ isolated function updateCommentQuery(types:UpdateCommentPayload payload, string 
         UPDATE 
             comment
         SET 
-            comment = ${payload.comment}
+            comment = ${payload.comment},
+            updated_by = ${updatedBy}
         WHERE 
             comment_id = ${payload.commentId} AND is_deleted = false;
 `;
@@ -1001,7 +1005,8 @@ isolated function deleteCommentQuery(types:UpdateCommentPayload payload, string 
         UPDATE 
             comment
         SET 
-            is_deleted = true
+            is_deleted = true,
+            updated_by = ${updatedBy}
         WHERE 
             comment_id = ${payload.commentId} AND is_deleted = false;
 `;
@@ -1029,7 +1034,7 @@ isolated function getCommentDataQuery(int commentId, string email) returns sql:P
 # + routeId - Route ID to update visibility
 # + payload - Route ID to update visibility
 # + return - SQL query
-public isolated function updateRouteVisibilityQuery(string routeId, types:Routes payload)
+public isolated function updateRouteVisibilityQuery(int routeId, types:Routes payload)
     returns sql:ParameterizedQuery => `
     UPDATE 
         route 
@@ -1107,9 +1112,11 @@ isolated function updateCustomButtonQuery(int id, CustomButtonUpdatePayload butt
         UPDATE
             custom_buttons
         SET 
-            updated_at = CURRENT_TIMESTAMP,`;
+    `;
 
     sql:ParameterizedQuery[] sqlQueries = [];
+
+    sqlQueries.push(` updated_at = CURRENT_TIMESTAMP `);
 
     if button.label is string {
         sqlQueries.push(` label = ${button.label} `);
@@ -1723,11 +1730,13 @@ isolated function updateTestimonialQuery(int id, CustomerTestimonialUpdatePayloa
 
     sql:ParameterizedQuery sqlQuery = `
         UPDATE customer_testimonial
-        SET updated_by = ${updatedBy},
-            updated_at = CURRENT_TIMESTAMP,
+        SET 
     `;
 
     sql:ParameterizedQuery[] sqlQueries = [];
+
+    sqlQueries.push(` updated_by = ${updatedBy} `);
+    sqlQueries.push(` updated_at = CURRENT_TIMESTAMP `);
 
     if testimonial.logoUrl is string {
         sqlQueries.push(` logo_url = ${testimonial.logoUrl} `);

@@ -1047,6 +1047,14 @@ service http:InterceptableService / on new http:Listener(9090) {
     resource function get search\-content/basic(http:RequestContext ctx)
         returns types:ContentReport[]|http:InternalServerError {
 
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
         types:ContentReport[]|error result = database:getContentDetails();
         if result is error {
             string customError = "Error while fetching basic content search info";
@@ -1703,7 +1711,7 @@ service http:InterceptableService / on new http:Listener(9090) {
             return http:BAD_REQUEST;
         }
 
-        int|error? result = database:updateRouteVisibility(routeId, payload);
+        int|error? result = database:updateRouteVisibility(routeIdInt, payload);
         if result is error || result == () {
             string customError = "Error while updating route visibility!";
             log:printError(customError, result);
@@ -1780,9 +1788,9 @@ service http:InterceptableService / on new http:Listener(9090) {
     # Update a custom button.
     #
     # + ctx - Request context
-    # + id - Button ID
+    # + buttonId - Button ID
     # + return - Success or error responses
-    resource function patch contents/[int id]/custom\-buttons(http:RequestContext ctx,
+    resource function patch contents/[int buttonId]/custom\-buttons(http:RequestContext ctx,
             database:CustomButtonUpdatePayload button)
         returns http:Ok|http:BadRequest|http:NotFound|http:Conflict|http:Forbidden|http:InternalServerError {
 
@@ -1799,7 +1807,7 @@ service http:InterceptableService / on new http:Listener(9090) {
             return http:FORBIDDEN;
         }
 
-        database:CustomButton|error? customButton = database:getCustomButton(id);
+        database:CustomButton|error? customButton = database:getCustomButton(buttonId);
         if customButton is error {
             string customError = "Error while fetching the custom button!";
             log:printError(customError, customButton);
@@ -1818,7 +1826,7 @@ service http:InterceptableService / on new http:Listener(9090) {
             };
         }
 
-        int|error? updateErr = database:updateCustomButton(id, button);
+        int|error? updateErr = database:updateCustomButton(buttonId, button);
         if updateErr is error || updateErr is () {
             string updateError = "Error while updating the custom button!";
             log:printError(updateError, updateErr);
