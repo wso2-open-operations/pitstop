@@ -74,8 +74,9 @@ public isolated function checkContentExists(string? contentLink = (), string? co
             // This function handles a POST request. Error logging is intentionally omitted for this operation.
             return;
         }
+        return result;
     }
-    return result is int;
+    return true;
 }
 
 # Verify the presence of section.
@@ -93,8 +94,9 @@ public isolated function checkSectionExists(string? title = (), int? routeId = (
             // This function handles a POST request. Error logging is intentionally omitted for this operation.
             return;
         }
+        return result;
     }
-    return result is int;
+    return true;
 }
 
 # Add a new comment.

@@ -39,18 +39,20 @@ VALUES (
         0
     );
 CREATE TABLE `section` (
-    `section_id` int NOT NULL AUTO_INCREMENT COMMENT 'Section ID',
-    `route_id` int DEFAULT NULL COMMENT 'Route ID',
-    `title` varchar(300) DEFAULT NULL COMMENT 'Section title',
-    `is_deleted` tinyint(1) DEFAULT '0' COMMENT 'Deletion status',
-    `section_type` enum('section', 'image') DEFAULT 'section' COMMENT 'Section type',
-    `image_url` varchar(500) DEFAULT NULL COMMENT 'Section image',
-    `redirect_url` varchar(500) DEFAULT NULL COMMENT 'Section redirect URL',
-    `styling_info` json DEFAULT NULL COMMENT 'Styling information',
-    `section_order` int DEFAULT NULL,
-    PRIMARY KEY (`section_id`),
-    KEY `route_id` (`route_id`),
-    CONSTRAINT `section_ibfk_1` FOREIGN KEY (`route_id`) REFERENCES `route` (`route_id`)
+  `section_id` int NOT NULL AUTO_INCREMENT COMMENT 'Section ID',
+  `route_id` int DEFAULT NULL COMMENT 'Route ID',
+  `title` varchar(300) DEFAULT NULL COMMENT 'Section title',
+  `is_deleted` tinyint(1) DEFAULT '0' COMMENT 'Deletion status',
+  `section_type` enum('section','image','vertical') DEFAULT NULL,
+  `image_url` varchar(500) DEFAULT NULL,
+  `redirect_url` varchar(500) DEFAULT NULL,
+  `styling_info` json DEFAULT NULL,
+  `section_order` int DEFAULT NULL,
+  `description` text,
+  `tags` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`section_id`),
+  KEY `route_id` (`route_id`),
+  CONSTRAINT `section_ibfk_1` FOREIGN KEY (`route_id`) REFERENCES `route` (`route_id`)
 );
 
 INSERT INTO section (
@@ -124,16 +126,16 @@ CREATE TABLE `comment` (
 );
 
 CREATE TABLE `content_like` (
-    `like_id` int NOT NULL AUTO_INCREMENT COMMENT 'Like ID',
-    `content_id` int DEFAULT NOT NULL COMMENT 'Content ID',
-    `user_id` int DEFAULT NOT NULL COMMENT 'User ID',
-    `status` tinyint(1) DEFAULT '0' COMMENT 'User like or not',
-    PRIMARY KEY (`like_id`),
-    KEY `content_id` (`content_id`),
-    KEY `user_id` (`user_id`),
-    UNIQUE KEY `unique_content_user` (`content_id`, `user_id`),
-    CONSTRAINT `content_like_ibfk_1` FOREIGN KEY (`content_id`) REFERENCES `content` (`content_id`),
-    CONSTRAINT `content_like_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`)
+  `like_id` int NOT NULL AUTO_INCREMENT COMMENT 'Like ID',
+  `content_id` int DEFAULT NULL COMMENT 'Content ID',
+  `user_id` int DEFAULT NULL COMMENT 'User ID',
+  `status` tinyint(1) DEFAULT '0' COMMENT 'User like or not',
+  PRIMARY KEY (`like_id`),
+  UNIQUE KEY `unique_content_user` (`content_id`,`user_id`),
+  KEY `content_id` (`content_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `content_like_ibfk_1` FOREIGN KEY (`content_id`) REFERENCES `content` (`content_id`),
+  CONSTRAINT `content_like_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`)
 );
 
 CREATE TABLE `audit` (

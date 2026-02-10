@@ -424,18 +424,7 @@ isolated function deleteSectionsByRouteIdQuery(int routeId) returns sql:Paramete
 isolated function deleteContentsBySectionIdQuery(int sectionId) returns sql:ParameterizedQuery => `
     UPDATE content
     SET is_deleted = TRUE
-    WHERE section_id IN (
-        WITH RECURSIVE RecursiveSectionIds AS (
-            SELECT section_id
-            FROM section
-            WHERE section_id =${sectionId} 
-            UNION
-            SELECT s.section_id
-            FROM section s JOIN RecursiveSectionIds rec ON s.section_id = rec.section_id
-        )
-        SELECT section_id
-        FROM RecursiveSectionIds
-    );
+    WHERE section_id = ${sectionId}
 `;
 
 # Query to update content.
@@ -1029,6 +1018,7 @@ public isolated function updateRouteVisibilityQuery(int routeId, types:Routes pa
     WHERE 
         route_id = ${routeId} 
         OR parent_id = ${routeId}
+        AND is_deleted = false
 `;
 
 # Add a new custom button.
