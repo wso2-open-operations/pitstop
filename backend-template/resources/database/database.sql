@@ -71,37 +71,32 @@ VALUES (
     );
 
 CREATE TABLE `content` (
-    `content_id` int NOT NULL AUTO_INCREMENT COMMENT 'Content ID',
-    `section_id` int DEFAULT NOT NULL COMMENT 'Section ID',
-    `content_link` varchar(300) DEFAULT NOT NULL COMMENT 'Content link',
-    `content_type` enum(
-        'pdf',
-        'slides',
-        'mp4',
-        'youtube',
-        'page',
-        'docs',
-        'gsheet',
-        'lms',
-        'salesforce',
-        'external'
-    ) DEFAULT 'external' COMMENT 'Content type',
-    `description` varchar(300) DEFAULT NOT NULL COMMENT 'Content description',
-    `thumbnail` varchar(300) DEFAULT NULL COMMENT 'Content thumbnail',
-    `is_deleted` tinyint(1) DEFAULT '0' COMMENT 'Deletion status',
-    `styling_info` json DEFAULT NULL COMMENT 'Styling information',
-    `created_on` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (`content_id`),
-    KEY `section_id` (`section_id`),
-    CONSTRAINT `content_ibfk_1` FOREIGN KEY (`section_id`) REFERENCES `section` (`section_id`)
+  `content_id` int NOT NULL AUTO_INCREMENT COMMENT 'Content ID',
+  `section_id` int DEFAULT NULL COMMENT 'Section ID',
+  `content_link` varchar(300) DEFAULT NULL COMMENT 'Content link',
+  `content_type` enum('slides','youtube','page','gsheet','lms','salesforce','external','route_content') DEFAULT NULL,
+  `content_sub_type` varchar(200) DEFAULT NULL COMMENT 'External subtype',
+  `description` varchar(300) DEFAULT NULL COMMENT 'Content description',
+  `is_deleted` tinyint(1) DEFAULT '0' COMMENT 'Deletion status',
+  `created_on` timestamp(6) NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `thumbnail` varchar(300) DEFAULT NULL,
+  `styling_info` json DEFAULT NULL,
+  `content_order` int DEFAULT NULL,
+  `created_by` varchar(50) DEFAULT NULL,
+  `updated_by` varchar(50) DEFAULT NULL,
+  `last_verified_by` varchar(50) DEFAULT NULL,
+  `updated_on` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `last_verified_on` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `note` text,
+  `tags` varchar(255) DEFAULT NULL,
+  `route_id` int DEFAULT NULL,
+  `parent_content_id` int DEFAULT NULL,
+  `is_visible` tinyint(1) NOT NULL DEFAULT '1',
+  `is_reused` tinyint(1) DEFAULT '0' COMMENT 'Indicates if content is reused and should be excluded from What’s New',
+  PRIMARY KEY (`content_id`),
+  KEY `section_id` (`section_id`),
+  CONSTRAINT `content_ibfk_1` FOREIGN KEY (`section_id`) REFERENCES `section` (`section_id`)
 );
-
-ALTER TABLE content
-ADD COLUMN is_visible TINYINT NOT NULL DEFAULT 1;
-
-ALTER TABLE content
-ADD COLUMN content_sub_type VARCHAR(200) DEFAULT NULL COMMENT 'Content subtype'
-AFTER content_type;
 
 CREATE TABLE `user` (
     `user_id` int NOT NULL AUTO_INCREMENT COMMENT 'User ID',
@@ -113,15 +108,19 @@ CREATE TABLE `user` (
 );
 
 CREATE TABLE `comment` (
-    `comment_id` int NOT NULL AUTO_INCREMENT COMMENT 'Comment ID',
-    `content_id` int DEFAULT NOT NULL COMMENT 'Content ID',
-    `user_id` int DEFAULT NOT NULL COMMENT 'User ID',
-    `comment` varchar(500) NOT NULL COMMENT 'Comment',
-    PRIMARY KEY (`comment_id`),
-    KEY `content_id` (`content_id`),
-    KEY `user_id` (`user_id`),
-    CONSTRAINT `comment_ibfk_1` FOREIGN KEY (`content_id`) REFERENCES `content` (`content_id`),
-    CONSTRAINT `comment_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`)
+  `comment_id` int NOT NULL AUTO_INCREMENT COMMENT 'Comment ID',
+  `content_id` int DEFAULT NULL COMMENT 'Content ID',
+  `user_id` int DEFAULT NULL COMMENT 'User ID',
+  `comment` varchar(500) NOT NULL COMMENT 'Comment',
+  `is_deleted` tinyint DEFAULT '0',
+  `created_on` timestamp(6) NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_by` varchar(50) DEFAULT NULL,
+  `updated_on` timestamp(6) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`comment_id`),
+  KEY `content_id` (`content_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `comment_ibfk_1` FOREIGN KEY (`content_id`) REFERENCES `content` (`content_id`),
+  CONSTRAINT `comment_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`)
 );
 
 CREATE TABLE `content_like` (
@@ -272,9 +271,6 @@ MODIFY COLUMN content_type ENUM(
         'external',
         'route_content'
     );
-ALTER TABLE content
-ADD COLUMN route_id INT,
-    ADD COLUMN parent_content_id INT;
 
 CREATE TABLE `custom_buttons` (
     `id` INT NOT NULL AUTO_INCREMENT,

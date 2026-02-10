@@ -44,22 +44,6 @@ public isolated function getAllRoutesFlat() returns types:Route[]|error {
         select result;
 }
 
-# Verify the presence of children route paths of a given parent route path.
-#
-# + routeId - Route ID
-# + return - Whether the children route paths exists or error
-public isolated function checkChildrenExists(int routeId) returns boolean|error? {
-    int|error result = dbClient->queryRow(getRoutePathChildrenQuery(routeId));
-
-    if result is error {
-        if result is sql:NoRowsError {
-            log:printError("No children found for route", routeId = routeId);
-            return false;
-        }
-    }
-    return result is int;
-}
-
 # Add a new content.
 #
 # + createdBy - Created by user email

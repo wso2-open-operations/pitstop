@@ -60,20 +60,6 @@ isolated function getAllRoutesFlatQuery() returns sql:ParameterizedQuery =>
      ORDER BY parent_id, route_order
 `;
 
-# Query to get child route IDs for a given parent route ID.
-#
-# + routeId - Route ID
-# + return - SQL parameterized query
-isolated function getRoutePathChildrenQuery(int routeId) returns sql:ParameterizedQuery =>
-`
-        SELECT 
-            route_id
-        FROM 
-            route
-        WHERE parent_id = ${routeId} AND
-        is_deleted = false;   
-    `;
-
 # Query to update route.
 #
 # + updateRoutePayload - Route data to change
