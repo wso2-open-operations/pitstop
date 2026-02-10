@@ -16,20 +16,24 @@ CREATE DATABASE IF NOT EXISTS `se_wiki`;
 use se_wiki;
 
 CREATE TABLE `route` (
-    `route_id` int NOT NULL AUTO_INCREMENT COMMENT 'Route ID',
-    `parent_id` int DEFAULT NULL COMMENT 'Parent ID of route',
-    `label` varchar(100) DEFAULT NULL COMMENT 'Label of route',
-    `title` varchar(50) DEFAULT NULL COMMENT 'Page title',
-    `thumbnail` varchar(300) DEFAULT NULL COMMENT 'Page thumbnail',
-    `description` text,
-    `is_deleted` tinyint(1) DEFAULT '0' COMMENT 'Page deletion status',
-    `route_path` varchar(300) DEFAULT NULL,
-    `menu_item` varchar(100) DEFAULT NULL,
-    `styling_info` json DEFAULT NULL COMMENT 'Styling information',
+  `route_id` int NOT NULL AUTO_INCREMENT COMMENT 'Route ID',
+  `parent_id` int DEFAULT NULL COMMENT 'Parent ID of route',
+   `label` varchar(100) DEFAULT NULL COMMENT 'Label of route',
+   `title` varchar(50) DEFAULT NULL COMMENT 'Page title',
+   `thumbnail` varchar(300) DEFAULT NULL COMMENT 'Page thumbnail',
+   `description` text,
+   `is_deleted` tinyint(1) DEFAULT '0' COMMENT 'Page deletion status',
+   `route_path` varchar(300) DEFAULT NULL,
+   `menu_item` varchar(100) DEFAULT NULL,
+   `styling_info` json DEFAULT NULL,
+   `route_order` int DEFAULT NULL,
+   `isVisible` tinyint(1) DEFAULT '1',
+   `isRouteVisible` tinyint(1) DEFAULT '1' COMMENT 'Visibility status of the route (1 = visible, 0 = hidden)',
     PRIMARY KEY (`route_id`),
     KEY `parent_id` (`parent_id`),
     CONSTRAINT `route_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `route` (`route_id`)
 );
+
 INSERT INTO route (parent_id, label, title, description, is_deleted)
 VALUES (
         NULL,
@@ -38,6 +42,7 @@ VALUES (
         'Your platform to access sales resources to sell better!',
         0
     );
+
 CREATE TABLE `section` (
   `section_id` int NOT NULL AUTO_INCREMENT COMMENT 'Section ID',
   `route_id` int DEFAULT NULL COMMENT 'Route ID',
@@ -291,7 +296,7 @@ CREATE TABLE `custom_buttons` (
     PRIMARY KEY (`id`),
     FOREIGN KEY (`content_id`) REFERENCES `content` (`content_id`) ON DELETE CASCADE
 );
-ALTER TABLE custom_buttons CHANGE `order` `button_order` INT;
+
 CREATE TABLE pinned_content (
     `user_email` VARCHAR(255) NOT NULL,
     `content_id` INT NOT NULL,
