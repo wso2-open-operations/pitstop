@@ -597,7 +597,7 @@ isolated function getSectionByRoutePathQuery(int 'limit, int 'offset, string? ro
         AND is_deleted = false
         AND section_type IN ('image', 'section')
     ORDER BY section_order DESC
-    LIMIT ${'limit} OFFSET ${offset}   
+    LIMIT ${'limit} OFFSET ${'offset}   
 `;
 
 # Query to delete section by ID.

@@ -331,7 +331,7 @@ public isolated function getSectionByRoutePath(int 'limit, int 'offset, string? 
 
     types:Section[] sections = [];
 
-    stream<Section, sql:Error?> resultStream = dbClient->query(getSectionByRoutePathQuery('limit, offset, routePath));
+    stream<Section, sql:Error?> resultStream = dbClient->query(getSectionByRoutePathQuery('limit, 'offset, routePath));
 
     error? e = from Section {customSectionTheme, ...sectionRest} in resultStream
         do {

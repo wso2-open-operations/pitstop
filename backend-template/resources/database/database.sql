@@ -287,7 +287,7 @@ CREATE TABLE `custom_buttons` (
     `action_value` VARCHAR(255),
     `is_visible` BOOLEAN DEFAULT TRUE,
     `is_deleted` BOOLEAN DEFAULT FALSE,
-    `order` INT,
+    `button_order` INT,
     `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
