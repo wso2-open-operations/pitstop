@@ -1,0 +1,291 @@
+// Copyright (c) 2026 WSO2 LLC. (https://www.wso2.com).
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import { Box, IconButton, useTheme } from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ComponentCard from "./Card";
+import { ContentResponse } from "../../../types/types";
+
+interface CarouselProps {
+  contentData: ContentResponse[];
+  isInPinnedSection?: boolean;
+  autoScroll?: boolean;
+  autoScrollInterval?: number;
+}
+
+const CARD_W = 399;
+const CARD_H = 424;
+const SIDE_OFFSET_X = 80;
+const SIDE_SCALE = 0.85;
+const CENTER_SCALE = 1.0;
+const ARROW_SIZE = 38;
+const ARROW_INSET = 2;
+
+const Carousel: React.FC<CarouselProps> = ({
+  contentData,
+  isInPinnedSection = false,
+  autoScroll = true,
+  autoScrollInterval = 5000, 
+}) => {
+  const theme = useTheme();
+  const count = contentData.length;
+
+  const [index, setIndex] = useState(0);
+  const [hover, setHover] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const arrowRefPrev = useRef<HTMLButtonElement>(null);
+  const arrowRefNext = useRef<HTMLButtonElement>(null);
+
+  const current = useMemo(() => (count ? index % count : 0), [index, count]);
+
+  useEffect(() => setIndex(0), [count]);
+
+  useEffect(() => {
+    if (!autoScroll || count <= 1 || hover) return;
+    const id = setInterval(() => {
+      setIsTransitioning(true);
+      setIndex((i) => (i + 1) % count);
+      setTimeout(() => setIsTransitioning(false), 600); 
+    }, autoScrollInterval);
+    return () => clearInterval(id);
+  }, [autoScroll, autoScrollInterval, count, hover]);
+
+  const onPrev = () => {
+    if (count > 1 && !isTransitioning) {
+      setIsTransitioning(true);
+      setIndex((i) => (i - 1 + count) % count);
+      setTimeout(() => setIsTransitioning(false), 600); 
+    }
+  };
+
+  const onNext = () => {
+    if (count > 1 && !isTransitioning) {
+      setIsTransitioning(true);
+      setIndex((i) => (i + 1) % count);
+      setTimeout(() => setIsTransitioning(false), 600); 
+    }
+  };
+
+  const renderCard = (item: ContentResponse) => (
+    <Box sx={{ width: CARD_W, height: CARD_H, borderRadius: 3, overflow: "visible" }}>
+      <ComponentCard {...item} isInPinnedSection={isInPinnedSection} />
+    </Box>
+  );
+
+  const getCardStyle = (offset: number) => {
+    const absOffset = Math.abs(offset);
+    
+    if (offset === 0) {
+      // Center card - optimized for clarity
+      return {
+        position: "absolute" as const,
+        top: 0,
+        left: "50%",
+        zIndex: 10,
+        transform: `translateX(-50%) scale(${CENTER_SCALE})`,
+        transition: "all 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94)", 
+        filter: "none",
+        opacity: 1,
+        pointerEvents: "auto" as const,
+        willChange: "transform, opacity",
+        backfaceVisibility: "hidden" as const,
+        WebkitFontSmoothing: "antialiased" as const,
+      };
+    } else if (absOffset === 1) {
+      return {
+        position: "absolute" as const,
+        top: 0,
+        left: "50%",
+        zIndex: 5,
+        transform: `translateX(calc(-50% + ${offset * SIDE_OFFSET_X}px)) translateY(10px) scale(${SIDE_SCALE})`,
+        transition: "all 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94)", 
+        filter: "brightness(0.7) saturate(0.9)",
+        opacity: 0.5,
+        pointerEvents: "none" as const,
+        willChange: "transform, opacity",
+        backfaceVisibility: "hidden" as const,
+        WebkitFontSmoothing: "antialiased" as const,
+      };
+    } else {
+      // Hide all other cards
+      return {
+        position: "absolute" as const,
+        top: 0,
+        left: "50%",
+        zIndex: 0,
+        transform: `translateX(calc(-50% + ${offset > 0 ? 300 : -300}px)) scale(0.5)`,
+        transition: "all 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94)", 
+        opacity: 0,
+        pointerEvents: "none" as const,
+        visibility: "hidden" as const,
+        willChange: "transform, opacity",
+        backfaceVisibility: "hidden" as const,
+      };
+    }
+  };
+
+  return (
+    <Box
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      sx={{ position: "relative", width: CARD_W, overflow: "visible" }}
+    >
+      <Box
+        sx={{
+          position: "relative",
+          width: CARD_W,
+          height: CARD_H + 40,
+          overflow: "visible",
+        }}
+      >
+        {/* Render all cards in circular arrangement */}
+        {count > 0 && Array.from({ length: count }).map((_, i) => {
+          const offset = i - current;
+          const wrappedOffset = offset > count / 2 ? offset - count : offset < -count / 2 ? offset + count : offset;
+          
+          return (
+            <Box
+              key={`card-${i}`}
+              sx={getCardStyle(wrappedOffset)}
+            >
+              {renderCard(contentData[i])}
+            </Box>
+          );
+        })}
+      </Box>
+
+      {/* Navigation Arrows - Only visible on hover */}
+      {count > 1 && (
+        <>
+          <IconButton
+            ref={arrowRefPrev}
+            aria-label="Previous"
+            onClick={onPrev}
+            disabled={isTransitioning}
+            sx={{
+              position: "absolute",
+              top: `calc(${CARD_H / 2}px)`,
+              left: ARROW_INSET,
+              transform: "translateY(-50%)",
+              width: ARROW_SIZE,
+              height: ARROW_SIZE,
+              borderRadius: "99px",
+              zIndex: 15,
+              bgcolor: alpha(theme.palette.background.paper, 0.9),
+              backdropFilter: "blur(6px)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              opacity: hover ? 1 : 0, 
+              visibility: hover ? "visible" : "hidden",
+              "&:hover": { 
+                bgcolor: alpha(theme.palette.background.paper, 0.98),
+                transform: "translateY(-50%) scale(1.1)",
+              },
+              "&:disabled": {
+                opacity: 0.5,
+              },
+              transition: "opacity 0.3s ease, visibility 0.3s ease, transform 0.2s ease, background-color 0.2s ease",
+            }}
+          >
+            <ArrowBackIosIcon fontSize="small" sx={{ ml: 0.5 }} />
+          </IconButton>
+
+          <IconButton
+            ref={arrowRefNext}
+            aria-label="Next"
+            onClick={onNext}
+            disabled={isTransitioning}
+            sx={{
+              position: "absolute",
+              top: `calc(${CARD_H / 2}px)`,
+              right: ARROW_INSET,
+              transform: "translateY(-50%)",
+              width: ARROW_SIZE,
+              height: ARROW_SIZE,
+              borderRadius: "99px",
+              zIndex: 15,
+              bgcolor: alpha(theme.palette.background.paper, 0.9),
+              backdropFilter: "blur(6px)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              opacity: hover ? 1 : 0, 
+              visibility: hover ? "visible" : "hidden",
+              "&:hover": { 
+                bgcolor: alpha(theme.palette.background.paper, 0.98),
+                transform: "translateY(-50%) scale(1.1)",
+              },
+              "&:disabled": {
+                opacity: 0.5,
+              },
+              transition: "opacity 0.3s ease, visibility 0.3s ease, transform 0.2s ease, background-color 0.2s ease",
+            }}
+          >
+            <ArrowForwardIosIcon fontSize="small" />
+          </IconButton>
+        </>
+      )}
+
+      {/* Dots */}
+      {count > 1 && (
+        <Box
+          sx={{
+            mt: 2,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 1,
+            zIndex: 5,
+            position: "relative",
+          }}
+        >
+          {Array.from({ length: count }).map((_, i) => (
+            <Box
+              key={i}
+              onClick={() => {
+                if (!isTransitioning) {
+                  setIsTransitioning(true);
+                  setIndex(i);
+                  setTimeout(() => setIsTransitioning(false), 600); 
+                }
+              }}
+              sx={{
+                width: i === current ? 12 : 10,
+                height: i === current ? 12 : 10,
+                borderRadius: "50%",
+                cursor: isTransitioning ? "not-allowed" : "pointer",
+                bgcolor:
+                  i === current
+                    ? theme.palette.primary.main
+                    : alpha(theme.palette.text.primary, 0.28),
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  bgcolor:
+                    i === current
+                      ? theme.palette.primary.main
+                      : alpha(theme.palette.text.primary, 0.45),
+                  transform: "scale(1.15)",
+                },
+              }}
+            />
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+export default Carousel;

@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import url("https://fonts.googleapis.com/css2?family=Dosis:wght@200&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Source+Sans+Pro:wght@200;400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Dosis:wght@200&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Source+Sans+Pro:wght@200;400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Ruda:wght@400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,500;0,600;0,700;0,800;0,900;1,500;1,600;1,700;1,800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Domine:wght@400;500;600&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Paytone+One&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Vollkorn:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap");
+
+* {
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.panel-con {
+  overflow-y: auto;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #ffffff;
+  /* margin-left: ; */
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #888;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.menu-tooltip {
+  display: inline-block;
+  position: fixed;
+  padding: 5px 15px;
+  border-radius: 3px;
+  left: 90px;
+  background: #212a30;
+  opacity: 0;
+  visibility: hidden;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+
+  &:before {
+    content: "";
+    display: block;
+    position: absolute;
+    left: -4px;
+    top: 11.5px;
+    transform: rotate(45deg);
+    width: 10px;
+    height: 10px;
+    background-color: inherit;
+  }
+}
+
+.panel-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 365px);
+  min-height: calc(587px);
+  padding-top: 10px;
+}
+
+.panel-container-sub-view {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 478px);
+  min-height: calc(543px);
+  padding-top: 10px;
+}
+
+.ql-editor p,
+.ql-editor b,
+.ql-editor ol,
+.ql-editor ul,
+.ql-editor pre,
+.ql-editor blockquote,
+.ql-editor h1,
+.ql-editor h2,
+.ql-editor h3,
+.ql-editor h4,
+.ql-editor h5,
+.ql-editor h6 {
+  font-family: "Ruda" !important;
+  font-size: 0.9285714285714286rem !important;
+}
+
+.wrapperClassName {
+  border: 1px solid #ebebeb;
+}
+
+.editorClassName {
+  border: 1px solid #ebebeb;
+  padding: 10px;
+  a {
+    color: rgb(34, 43, 143);
+    text-decoration: underline;
+  }
+}
+
+.ce-block__content {
+  max-width: calc(100% - 150px) !important;
+}
+
+.ce-toolbar__content {
+  max-width: calc(100% - 150px) !important;
+}
+
+.codex-editor {
+  padding: 30px 0px;
+  border: 0.5px solid #ebebeb;
+}
