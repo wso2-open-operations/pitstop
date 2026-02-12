@@ -14,20 +14,27 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import type { VariantType } from "notistack";
-import type { AppDispatch } from "@slices/store";
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { VariantType } from "notistack";
 
 export interface CommonState {
   message: string;
   timestamp: number | null;
   type: VariantType;
+  anchorOrigin?: {
+    vertical: "top" | "bottom";
+    horizontal: "left" | "center" | "right";
+  };
 }
 
 const initialState: CommonState = {
   message: "",
   timestamp: null,
   type: "success",
+  anchorOrigin: {
+    vertical: "bottom",
+    horizontal: "right",
+  },
 };
 
 export const CommonSlice = createSlice({
@@ -38,28 +45,20 @@ export const CommonSlice = createSlice({
       state,
       action: PayloadAction<{
         message: string;
-        type: VariantType
+        type: "success" | "error" | "warning";
+        anchorOrigin?: {
+          vertical: "top" | "bottom";
+          horizontal: "left" | "center" | "right";
+        };
       }>
     ) => {
       state.message = action.payload.message;
       state.type = action.payload.type;
       state.timestamp = Date.now();
+      state.anchorOrigin = action.payload.anchorOrigin;
     },
   },
 });
 
-export function ShowSnackBarMessage(message: string, type: VariantType) {
-  return (dispatch: AppDispatch) => {
-    dispatch({
-      type: "common/enqueueSnackbarMessage",
-      payload: {
-        message: message,
-        type: type,
-      },
-    });
-  };
-}
-
 export const { enqueueSnackbarMessage } = CommonSlice.actions;
-
 export default CommonSlice.reducer;

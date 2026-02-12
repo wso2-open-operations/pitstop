@@ -14,55 +14,89 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import Grid from "@mui/material/Grid";
-import { Box, Container, LinearProgress, Typography } from "@mui/material";
-import type { PreLoaderProps } from "@utils/types";
+import { PreLoaderProps } from "../../types/types";
+import Typography from "@mui/material/Typography";
+import { Box, Container, Stack } from "@mui/material";
+import LinearProgress from "@mui/material/LinearProgress";
+import { useEffect, useState } from "react";
+import wso2Logo from "@assets/images/wso2-logo.svg";
+
+function CustomLinearProgress() {
+  return (
+    <Box sx={{ width: 200 }}>
+      <LinearProgress />
+    </Box>
+  );
+}
 
 const PreLoader = (props: PreLoaderProps) => {
+  const [shouldRender, setShouldRender] = useState(true);
+
+  useEffect(() => {
+    if (!props.isLoading) {
+      const timer = setTimeout(() => setShouldRender(false), 300);
+      return () => clearTimeout(timer);
+    } else {
+      setShouldRender(true);
+    }
+  }, [props.isLoading]);
+
+  if (!shouldRender) {
+    return null;
+  }
+
   return (
     <Box
       sx={{
-        background: (theme) => theme.palette.background.default,
+        position: "fixed",
+        inset: 0,
+        zIndex: 2000,
+        background: "#1a1a1a",
         display: "flex",
-        flexDirection: "column",
         justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
         height: "100vh",
+        opacity: props.isLoading ? 1 : 0,
+        transition: "opacity 0.3s ease-in-out",
+        pointerEvents: props.isLoading ? "auto" : "none",
       }}
     >
       <Container maxWidth="md">
-        <Box>
-          <Grid
-            container
+        <Box justifyContent="center" alignItems="center">
+          <Stack
             direction="column"
             justifyContent="center"
             alignItems="center"
             spacing={2}
           >
-            <Grid item xs={12}>
-              {props.isLoading && (
-                <LinearProgress
-                  sx={{
-                    width: "150px",
-                  }}
+            <Box>
+              {!props.hideLogo && (
+                <img
+                  alt="logo"
+                  width="150"
+                  height="auto"
+                  src={wso2Logo}
                 />
               )}
-            </Grid>
-            <Grid item xs={12}>
+            </Box>
+            <Box>
               <Typography
-                variant="inherit"
+                variant="body1"
                 sx={{
+                  color: "#fff",
+                  textAlign: "center",
                   fontSize: "14px",
-                  fontWeight: 500,
-                  color: (theme) =>
-                    theme.palette.mode === "light"
-                      ? theme.palette.common.black
-                      : theme.palette.common.white,
+                  fontWeight: 300,
                 }}
               >
-                {props.message}
+                {props.message || "SALES PITSTOP"}
               </Typography>
-            </Grid>
-          </Grid>
+            </Box>
+            <Box>
+              <CustomLinearProgress />
+            </Box>
+          </Stack>
         </Box>
       </Container>
     </Box>

@@ -14,93 +14,89 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { State } from "@/types/types";
+import { ApiService } from "@utils/apiService";
 import { AppConfig } from "@config/config";
-import axios, { HttpStatusCode } from "axios";
-import { APIService } from "@utils/apiService";
-import { SnackMessage } from "@config/constant";
-import type { UserState } from "@slices/authSlice/auth";
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { enqueueSnackbarMessage } from "@slices/commonSlice/common";
+import { UIMessages } from "@config/constant";
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
-interface Employee {
+const initialState: EmployeeState = {
+  state: "idle",
+  stateMessage: null,
+  errorMessage: null,
+  employeeInfo: null,
+  backgroundProcess: false,
+  backgroundProcessMessage: null,
+};
+
+interface EmployeeState {
+  state: "failed" | "success" | "loading" | "idle";
+  stateMessage: string | null;
+  errorMessage: string | null;
+  employeeInfo: EmployeeInfoInterface | null;
+  backgroundProcess: boolean;
+  backgroundProcessMessage: string | null;
+}
+
+interface EmployeeInfoInterface {
+  employeeId: string;
   firstName: string;
   lastName: string;
   workEmail: string;
-  employeeThumbnail: string | null;
+  department: string;
+  team: string;
+  location: string;
+  employeeThumbnail: string;
 }
 
-interface EmployeesState {
-  state: State;
-  stateMessage: string | null;
-  errorMessage: string | null;
-  employees: Employee[] | null;
-}
+export const getEmployeeInfo = createAsyncThunk(
+  "employee/getEmployeeInfo",
+  async (employeeEmail: string, { dispatch }) => {
+    return new Promise<{
+      employeeInfo: EmployeeInfoInterface;
+    }>((resolve, reject) => {
+      dispatch(updateStateMessage(UIMessages.loading.checkEmployeeInfo));
 
-const initialState: EmployeesState = {
-  state: State.idle,
-  stateMessage: null,
-  errorMessage: null,
-  employees: null,
-};
-
-export const fetchEmployees = createAsyncThunk(
-  "employee/fetchEmployees",
-  async (_, { getState, dispatch, rejectWithValue }) => {
-    const { userInfo } = (getState() as { user: UserState }).user;
-    return new Promise<Employee[]>((resolve, reject) => {
-      APIService.getInstance()
-        .get(AppConfig.serviceUrls.employees)
-        .then((response) => {
-          const filteredEmployees = response.data.filter(
-            (emp: Employee) => emp.workEmail !== userInfo?.workEmail
-          );
-          resolve(filteredEmployees);
-        })
-        .catch((error) => {
-          if (axios.isCancel(error)) {
-            return rejectWithValue("Request canceled");
+      ApiService.getInstance()
+        .get(AppConfig.serviceUrls.getEmployeeInfo + employeeEmail)
+        .then((resp) => {
+          if (resp.status == 200) {
+            resolve({
+              employeeInfo: resp.data,
+            });
           }
-          dispatch(
-            enqueueSnackbarMessage({
-              message:
-                error.response?.status === HttpStatusCode.InternalServerError
-                  ? SnackMessage.error.fetchEmployees
-                  : "An unknown error occurred.",
-              type: "error",
-            })
-          );
-          reject(error.response.data.message);
+        })
+        .catch((error: Error) => {
+          reject(error);
         });
     });
   }
 );
 
-const EmployeeSlice = createSlice({
-  name: "employee",
+export const EmployeeSlice = createSlice({
+  name: "getEmployeeInfo",
   initialState,
   reducers: {
-    resetSubmitState(state) {
-      state.state = State.idle;
+    updateStateMessage: (state, action: PayloadAction<string>) => {
+      state.stateMessage = action.payload;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchEmployees.pending, (state) => {
-        state.state = State.loading;
-        state.stateMessage = "Fetching employee data...";
+      .addCase(getEmployeeInfo.pending, (state) => {
+        state.state = "loading";
+        state.stateMessage = "Checking Employee Info";
       })
-      .addCase(fetchEmployees.fulfilled, (state, action) => {
-        state.state = State.success;
-        state.stateMessage = "Successfully fetched!";
-        state.employees = action.payload;
+      .addCase(getEmployeeInfo.fulfilled, (state, action) => {
+        state.employeeInfo = action.payload.employeeInfo;
+        state.state = "success";
+        state.stateMessage = null;
       })
-      .addCase(fetchEmployees.rejected, (state) => {
-        state.state = State.failed;
-        state.stateMessage = "Failed to fetch!";
+      .addCase(getEmployeeInfo.rejected, (state) => {
+        state.state = "failed";
+        state.stateMessage = null;
       });
   },
 });
 
-export const { resetSubmitState } = EmployeeSlice.actions;
+export const { updateStateMessage } = EmployeeSlice.actions;
 export default EmployeeSlice.reducer;

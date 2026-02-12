@@ -16,21 +16,53 @@
 
 export const SnackMessage = {
   success: {
-    addCollections: "Successfully added the Collection",
+    userListRetrieval: "Successfully retrieve the user list",
   },
   error: {
-    fetchCollectionsMessage: "Unable to retrieve list of selected Collections",
-    addCollections: "Unable to create the Collection",
-    insufficientPrivileges: "Insufficient Privileges",
-    fetchPrivileges: "Failed to fetch Privileges",
-    fetchContacts: "Unable to retrieve list of Contacts",
-    fetchEmployees: "Unable to retrieve list of Employees",
-    fetchCustomers: "Unable to retrieve list of Customers",
-    fetchAppConfigMessage: "Unable to retrieve app configurations",
+    userListRetrieval: "Error while retrieving the user list",
   },
-  warning: {},
+  warning: {
+    requestForSpecialPromotion: "There is a duplicate request found for this user",
+  },
 };
 
-export const APP_DESC = " Internal App Product Template.";
+export const CURRENT_YEAR = new Date().getFullYear();
 
-export const redirectUrl = "iapm-marketplace-redirect-url";
+export const UIMessages = {
+  loading: {
+    checkEmployeesInfo: "Loading employees information",
+    checkEmployeeInfo: "Checking employee information",
+  },
+};
+
+export const UIEditStyles = {
+  borderStyle: "dashed",
+  borderColor: "primary.main",
+  borderRadius: 2,
+  transition: "0.1s",
+  transform: "scale(1.01)",
+};
+
+export const SIDEBAR_WIDTH = 350;
+export const SECTION_LIMIT = 15;
+export const CONTENTS_PER_SECTION = 3;
+export const CONTENT_STATE_SUCCESS = "success";
+export const CONTENT_STATE_IDLE = "idle";
+export const CONTENT_STATE_FAILED = "failed";
+export const CONTENT_STATE_LOADING = "loading";
+
+export const PINNED_CONTENT_SECTION_ID = -2;
+export const SUGGESTED_CONTENT_SECTION_ID = -3;
+export const ESSENTIALS_SECTION_ID = -4;
+export const ITEMS_PER_PAGE = 3;
+
+export const PITSTOP_APP_THEME = "pitstop-app-theme"; 
+export const GOOGLE_DRIVE_DOMAIN = "drive.google.com";
+export const GOOGLE_DOCS_DOMAIN = "docs.google.com";
+
+export const ROUTE_ID_HOME = 1;
+export const ROUTE_ID_MY_BOARD = -5;
+export const ROUTE_ID_MORE = -1;
+export const ROUTE_ID_ADMIN_PANEL = -2;
+export const ROUTE_ID_ADMIN_EDIT_MENU = -3;
+export const ROUTE_ID_ADMIN_REPORT = -4;

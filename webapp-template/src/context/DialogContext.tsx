@@ -13,12 +13,8 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-import CloseIcon from "@mui/icons-material/Close";
-import DoneIcon from "@mui/icons-material/Done";
-import SaveAltIcon from "@mui/icons-material/SaveAlt";
-import SendIcon from "@mui/icons-material/Send";
-import LoadingButton from "@mui/lab/LoadingButton";
-import { IconButton, Stack, TextField } from "@mui/material";
+
+import { TextField, Typography } from "@mui/material";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -27,11 +23,7 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-
-import * as React from "react";
-import { useContext, useState } from "react";
-
-import { ConfirmationType } from "@/types/types";
+import React, { JSX, useContext, useState } from "react";
 
 type InputObj = {
   label: string;
@@ -39,22 +31,22 @@ type InputObj = {
   type: "textarea" | "date";
 };
 
-type UseConfirmationDialogShowReturnType = {
-  show: boolean;
-  setShow: (value: boolean) => void;
+interface UseConfirmationDialogShowReturnType {
+  showDialog: boolean;
+  setShowDialog: (value: boolean) => void;
   onHide: () => void;
-};
+}
 
 const useDialogShow = (): UseConfirmationDialogShowReturnType => {
-  const [show, setShow] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
 
-  const handleOnHide: () => void = () => {
-    setShow(false);
+  const handleOnHide = () => {
+    setShowDialog(false);
   };
 
   return {
-    show,
-    setShow,
+    showDialog,
+    setShowDialog,
     onHide: handleOnHide,
   };
 };
@@ -62,12 +54,11 @@ const useDialogShow = (): UseConfirmationDialogShowReturnType => {
 type ConfirmationDialogContextType = {
   showConfirmation: (
     title: string,
-    message: string | React.ReactNode,
-    type: ConfirmationType,
+    message: string | JSX.Element,
     action: () => void,
     okText?: string,
     cancelText?: string,
-    inputObj?: InputObj,
+    inputObj?: InputObj
   ) => void;
 };
 
@@ -75,49 +66,41 @@ type ConfirmationModalContextProviderProps = {
   children: React.ReactNode;
 };
 
-const ConfirmationModalContext = React.createContext<ConfirmationDialogContextType | null>(null);
+const ConfirmationModalContext = React.createContext<ConfirmationDialogContextType>(
+  {} as ConfirmationDialogContextType
+);
 
-const ConfirmationModalContextProvider: React.FC<ConfirmationModalContextProviderProps> = (
-  props,
-) => {
-  const { setShow, show, onHide } = useDialogShow();
+const ConfirmationDialogContextProvider: React.FC<ConfirmationModalContextProviderProps> = (props) => {
+  const { setShowDialog, showDialog, onHide } = useDialogShow();
 
   const [comment, setComment] = React.useState("");
 
   const [content, setContent] = useState<{
     title: string;
-    message: string | React.ReactNode;
-    type: ConfirmationType;
+    message: string | JSX.Element;
     action: (value?: string) => void;
     okText?: string;
     cancelText?: string;
     inputObj?: InputObj;
-  }>({
-    title: "",
-    message: "",
-    type: ConfirmationType.send,
-    action: () => {},
-  });
+  } | null>();
 
   const handleShow = (
     title: string,
-    message: string | React.ReactNode,
-    type: ConfirmationType,
+    message: string | JSX.Element,
     action: (value?: string) => void,
     okText?: string,
     cancelText?: string,
-    inputObj?: InputObj,
+    inputObj?: InputObj
   ) => {
     setContent({
       title,
       message,
-      type,
       action,
       okText,
       cancelText,
       inputObj,
     });
-    setShow(true);
+    setShowDialog(true);
   };
 
   const dialogContext: ConfirmationDialogContextType = {
@@ -125,7 +108,10 @@ const ConfirmationModalContextProvider: React.FC<ConfirmationModalContextProvide
   };
 
   const handleOk = (value?: string) => {
-    content && content.action(value);
+    if (content) {
+      content.action(value);
+    }
+    Reset();
     onHide();
   };
 
@@ -138,7 +124,6 @@ const ConfirmationModalContextProvider: React.FC<ConfirmationModalContextProvide
     setContent({
       title: "",
       message: "",
-      type: ConfirmationType.accept,
       action: () => {},
       okText: undefined,
       cancelText: undefined,
@@ -157,97 +142,60 @@ const ConfirmationModalContextProvider: React.FC<ConfirmationModalContextProvide
         {props.children}
         {content && (
           <Dialog
-            open={show}
-            sx={{
-              ".MuiDialog-paper": {
-                maxWidth: 350,
-                borderRadius: 3,
-              },
-              backdropFilter: "blur(10px)",
-            }}
+            style={{ padding: 10, boxShadow: "none" }}
+            open={showDialog}
+            onClose={onHide}
+            aria-labelledby="alert-dialog-title"
+            aria-describedby="alert-dialog-description"
           >
-            <DialogTitle
-              variant="h5"
-              sx={{
-                fontWeight: "bold",
-                borderBottom: 1,
-                borderColor: "divider",
-                mb: 1,
-                pd: 0,
-              }}
-            >
-              {content?.title}
+            <DialogTitle id="alert-dialog-title" className="dialogtitle" fontSize={"16px"}>
+              {content.title}
             </DialogTitle>
-            <IconButton
-              aria-label="close"
-              onClick={handleCancel}
-              sx={{
-                position: "absolute",
-                right: 8,
-                top: 8,
-                color: (theme) => theme.palette.secondary.dark,
+            <DialogContent>
+              <DialogContentText id="alert-dialog-description" className="dialog-body" fontSize={"14px"}>
+                {content.message}
+              </DialogContentText>
+              {content.inputObj && (
+                <div style={{ paddingTop: "20px" }}>
+                  {content.inputObj.type === "textarea" && (
+                    <>
+                      <TextField
+                        fullWidth
+                        value={comment}
+                        label={content.inputObj?.label}
+                        multiline
+                        inputProps={{ maxLength: 250 }}
+                        maxRows={6}
+                        onChange={onChange}
+                      />
+                      <Typography variant="h6" color="gray" sx={{ mt: 1 }}>
+                        {comment.length}/250{" "}
+                      </Typography>
+                    </>
+                  )}
+                </div>
+              )}
+            </DialogContent>
+            <DialogActions
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                margin: 10,
+                marginTop: 0,
               }}
             >
-              <CloseIcon />
-            </IconButton>
-            <DialogContent sx={{ p: 0, m: 0, paddingX: 2 }}>
-              <DialogContentText variant="body2">{content?.message}</DialogContentText>
-            </DialogContent>
-            {content.inputObj && (
-              <TextField
-                sx={{ marginX: 2, mt: 2, maxWidth: 350 }}
-                value={comment}
-                label={content.inputObj?.label}
-                type={content.inputObj?.type === "date" ? "date" : "text"}
-                size="small"
-                multiline={content.inputObj?.type === "textarea"}
-                rows={content.inputObj?.type === "textarea" ? 2 : undefined}
-                maxRows={content.inputObj?.type === "textarea" ? 6 : undefined}
-                onChange={onChange}
-              />
-            )}
-
-            <DialogActions sx={{ pb: 2, pt: 0, mt: 0, paddingX: 2 }}>
-              <Stack flexDirection={"row"} sx={{ mt: 1 }} gap={1}>
-                {/* Cancel button */}
-                <Button
-                  sx={{
-                    borderRadius: 2,
-                  }}
-                  onClick={handleCancel}
-                  variant="outlined"
-                  size="small"
-                >
-                  {content?.cancelText ? content.cancelText : "No"}
-                </Button>
-
-                {/* Ok button */}
-                <LoadingButton
-                  type="submit"
-                  sx={{
-                    borderRadius: 2,
-                    boxShadow: "none",
-                    border: 0.5,
-                    borderColor: "divider",
-                  }}
-                  variant="contained"
-                  size="small"
-                  disabled={content?.inputObj?.mandatory && comment === ""}
-                  onClick={() => (content?.inputObj ? handleOk(comment) : handleOk())}
-                  loadingPosition="start"
-                  startIcon={
-                    content.type === "update" ? (
-                      <SaveAltIcon />
-                    ) : content.type === "send" ? (
-                      <SendIcon />
-                    ) : (
-                      <DoneIcon />
-                    )
-                  }
-                >
-                  {content?.okText ? content.okText : "Yes"}
-                </LoadingButton>
-              </Stack>
+              <Button onClick={handleCancel} className="dialogno" size="large">
+                {content.cancelText ? content.cancelText : "No"}
+              </Button>
+              <Button
+                disabled={content.inputObj?.mandatory && comment === ""}
+                onClick={() => (content.inputObj ? handleOk(comment) : handleOk())}
+                autoFocus
+                className="dialogyes"
+                size="large"
+              >
+                {content.okText ? content.okText : "Yes"}
+              </Button>
             </DialogActions>
           </Dialog>
         )}
@@ -256,16 +204,9 @@ const ConfirmationModalContextProvider: React.FC<ConfirmationModalContextProvide
   );
 };
 
-const useConfirmationModalContext = (): ConfirmationDialogContextType => {
-  const context = useContext(ConfirmationModalContext);
-  if (!context) {
-    throw new Error(
-      "useConfirmationModalContext must be used within a ConfirmationModalContextProvider",
-    );
-  }
-  return context;
-};
+const useConfirmationModalContext = (): ConfirmationDialogContextType => useContext(ConfirmationModalContext);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { useDialogShow, useConfirmationModalContext };
 
-export default ConfirmationModalContextProvider;
+export default ConfirmationDialogContextProvider;
