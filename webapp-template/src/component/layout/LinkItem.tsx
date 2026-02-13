@@ -25,7 +25,6 @@ import ListItemText from "@mui/material/ListItemText";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import { NavLink, LinkProps as RouterLinkProps, useLocation, matchPath } from "react-router-dom";
 import { Box, Collapse } from "@mui/material";
-import CssBaseline from "@mui/material/CssBaseline";
 
 const Link = React.forwardRef<HTMLAnchorElement, RouterLinkProps>((itemProps, ref) => {
   return <NavLink ref={ref} {...itemProps} />;
@@ -131,7 +130,6 @@ const ListItemLink = (props: ListItemLinkProps) => {
           }),
         }}
       >
-        <CssBaseline />
         {children && children.length > 0 && (
           <ExpandMore
             sx={{
@@ -182,37 +180,33 @@ const ListItemLink = (props: ListItemLinkProps) => {
             whiteSpace: "nowrap",
           }}
         >
-          {children.map((component, idx) => {
-            const items = [component];
-
-            return items.map((item, i) => (
-              <Box
-                key={`${idx}-${i}`}
-                sx={{
-                  display: "block",
-                  width: "100%",
-                  borderRadius: "8px",
-                  "&:hover": {
-                    background: theme.palette.secondary.dark,
-                  },
-                  color: theme.palette.primary.contrastText,
-                  cursor: "pointer",
-                }}
-              >
-                <ListLinkItem
-                  routeId={item.routeId}
-                  theme={props.theme}
-                  to={item.path}
-                  label={item.menuItem}
-                  primary={item.menuItem}
-                  handleSideBar={handleSideBar}
-                  isActive={matchPath(item.path, pathname) !== null}
-                  children={item.children}
-                  level={level + 1}
-                />
-              </Box>
-            ));
-          })}
+          {children.map((component) => (
+            <Box
+              key={component.routeId}
+              sx={{
+                display: "block",
+                width: "100%",
+                borderRadius: "8px",
+                "&:hover": {
+                  background: theme.palette.secondary.dark,
+                },
+                color: theme.palette.primary.contrastText,
+                cursor: "pointer",
+              }}
+            >
+              <ListLinkItem
+                routeId={component.routeId}
+                theme={props.theme}
+                to={component.path}
+                label={component.menuItem}
+                primary={component.menuItem}
+                handleSideBar={handleSideBar}
+                isActive={matchPath(component.path, pathname) !== null}
+                children={component.children}
+                level={level + 1}
+              />
+            </Box>
+          ))}
         </Collapse>
       )}
     </Box>

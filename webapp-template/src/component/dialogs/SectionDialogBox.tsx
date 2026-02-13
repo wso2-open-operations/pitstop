@@ -40,7 +40,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import { useFormik } from "formik";
 import Cropper, { Area, Point } from "react-easy-crop";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect,useRef, useState } from "react";
 
 import RichTextEditor from "@component/common/RichTextEditor";
 import { SkeletonCard } from "@component/ui/content/SkeletonCard";
@@ -55,7 +55,6 @@ import {
   SectionDialogBoxProps,
   validationSectionSchema,
 } from "../../types/types";
-import { TagResponse } from "../../types/types";
 
 const SectionDialogBox = ({
   type,
@@ -67,10 +66,8 @@ const SectionDialogBox = ({
   const routeId = useAppSelector((state: RootState) => state.route.routeId);
   const dispatch = useAppDispatch();
 
-  const tagInfo = useAppSelector((state: RootState) =>
-    (state.page.tagData ?? []).map((tag: TagResponse) => tag.tagName),
-  );
-
+  const tagData = useAppSelector((state: RootState) => state.page.tagData);
+  
   const theme = useTheme();
   const orange100 = (theme.palette as any).orange?.[100] ?? theme.palette.secondary.main;
 
@@ -119,10 +116,10 @@ const SectionDialogBox = ({
   };
 
   useEffect(() => {
-    if (tagInfo.length === 0) {
+    if (!tagData || tagData.length === 0) {
       dispatch(getAllTags());
     }
-  }, [dispatch, tagInfo]);
+  }, [dispatch, tagData]);
 
   const cropSize = {
     height: 200,

@@ -277,14 +277,14 @@ const Header = (props: HeaderProps) => {
 
   const handleSearchPage = () => navigate("/search");
 
-  const isMyBoardActive = matchPath(pathname, "/my-board") !== null;
+  const isMyBoardActive = matchPath("/my-board", pathname) !== null;
 
   return (
     <ColorModeContext.Consumer>
       {(colorMode) => (
         <Box>
           <CssBaseline />
-          <StyledAppBar sx={{ position: "absolute" }}>
+          <StyledAppBar>
             <Toolbar>
               <IconButton
                 aria-label="open drawer"
@@ -491,7 +491,7 @@ const Header = (props: HeaderProps) => {
 
                     {/* -----------DropDown When User clicks on user thumbnail------- */}
                     <Menu
-                      sx={{ mt: "45px", ml: "83vw" }}
+                      sx={{ mt: "45px"}}
                       anchorEl={anchorElUser}
                       MenuListProps={{
                         "aria-labelledby": "long-button",

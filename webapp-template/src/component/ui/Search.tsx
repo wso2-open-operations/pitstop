@@ -51,8 +51,8 @@ export default function Search() {
   const theme = useTheme();
 
   useEffect(() => {
-    if (tagInfo.length === 0) dispatch(getAllTags());
-  }, [dispatch, tagInfo]);
+    dispatch(getAllTags());
+  }, [dispatch]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -241,6 +241,13 @@ export default function Search() {
                   );
                 })
               }
+              slotProps={{
+                paper: {
+                  sx: {
+                    maxHeight: 320,
+                  },
+                },
+              }}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -295,7 +302,7 @@ export default function Search() {
                             }}
                           />
                         </InputAdornment>
-                        {params.InputProps.startAdornment}
+                        {params.InputProps?.startAdornment}
                       </>
                     ),
                   }}

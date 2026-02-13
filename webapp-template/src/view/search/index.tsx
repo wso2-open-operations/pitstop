@@ -1,18 +1,9 @@
-// Copyright (c) 2026 WSO2 LLC. (https://www.wso2.com).
+// Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com). All Rights Reserved.
 //
-// WSO2 LLC. licenses this file to you under the Apache License,
-// Version 2.0 (the "License"); you may not use this file except
-// in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing,
-// software distributed under the License is distributed on an
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-// KIND, either express or implied.  See the License for the
-// specific language governing permissions and limitations
-// under the License.
+// This software is the property of WSO2 LLC. and its suppliers, if any.
+// Dissemination of any information or reproduction of any material contained
+// herein in any form is strictly forbidden, unless permitted by WSO2 expressly.
+// You may not alter or remove any copyright or other notice from copies of this content.
 
 import { CURRENT_YEAR } from "@config/constant";
 import Header from "@layout/header/index";
@@ -30,10 +21,10 @@ import { styled, useTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import {
   CardMedia,
+  Grid,
   Typography,
   Box as MuiBox,
   Pagination,
-  Stack,
 } from "@mui/material";
 import { SkeletonCard } from "../../component/ui/content/SkeletonCard";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
@@ -69,7 +60,7 @@ export default function Layout() {
   }, [searchData]);
 
   const getAppBarTitle = (): string => {
-     let title: string = "";
+    let title: string = "";
     matches?.forEach((obj) => {
       if (location.pathname === obj.pathname) {
         title = obj.route.menuItem;
@@ -202,30 +193,21 @@ export default function Layout() {
             )}
 
             {/* -------------------- Search Results -------------------- */}
-            <Stack
-              direction="row"
-              flexWrap="wrap"
-              spacing={0}
-              sx={{
-                gap: { xs: 2, md: 3 },
-                '& > *': {
-                  flexBasis: {
-                    xs: '100%',
-                    sm: 'calc(50% - 12px)',
-                    md: 'calc(33.333% - 16px)',
-                    lg: 'calc(25% - 18px)',
-                  },
-                  minWidth: {
-                    xs: '100%',
-                    sm: 'min(calc(50% - 12px), 320px)',
-                    md: 'min(calc(33.333% - 16px), 300px)',
-                    lg: 'min(calc(25% - 18px), 280px)',
-                  },
-                },
-              }}
+            <Grid
+              container
+              spacing={{ xs: 2, md: 3 }}
+              columns={{ xs: 4, sm: 8, md: 12 }}
             >
               {currentPageData.map((content, index) => (
-                <Box key={index}>
+                <Grid
+                  item
+                  key={index}
+                  xs={4}
+                  sm={4}
+                  md={4}
+                  lg={3}
+                  sx={{ mb: { xs: 2, md: 3 } }}
+                >
                   <ComponentCard
                     contentLink={content.contentLink}
                     contentType={content.contentType}
@@ -243,19 +225,19 @@ export default function Layout() {
                     customButtons={content.customButtons}
                     isInPinnedSection={content.sectionId === -2}
                   />
-                </Box>
+                </Grid>
               ))}
 
               {searchState === "loading" &&
                 [...Array(3)].map((_, index) => (
-                  <Box key={index}>
+                  <Grid item key={index} xs={4} sm={4} md={4} lg={3}>
                     <SkeletonCard />
-                  </Box>
+                  </Grid>
                 ))}
 
               {/* -------------------- Empty state -------------------- */}
               {searchState === "success" && searchData.length === 0 && (
-                <Box sx={{ width: '100%' }}>
+                <Grid item xs={12}>
                   <Box
                     sx={{
                       width: "100%",
@@ -296,10 +278,10 @@ export default function Layout() {
                       again.
                     </Typography>
                   </Box>
-                </Box>
+                </Grid>
               )}
               {/* -------------------- END Empty state -------------------- */}
-            </Stack>
+            </Grid>
 
             {/* -------------------- Pagination -------------------- */}
             {searchState === "success" && searchData.length > ITEMS_PER_PAGE && (

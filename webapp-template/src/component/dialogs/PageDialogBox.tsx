@@ -65,11 +65,12 @@ const PageDialogBox = ({
       description: initialValues?.description ? initialValues.description : "",
       isVisible: !!initialValues?.isVisible,
     },
+    enableReinitialize: true,
     validationSchema: validationPageSchema,
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       switch (type) {
         case "add":
-          dispatch(
+          await dispatch(
             createNewRoute({
               newContent: {
                 label: values.label,
@@ -84,10 +85,10 @@ const PageDialogBox = ({
               },
               routePath: window.location.pathname,
             }),
-          );
+          ).unwrap();
           break;
         case "update":
-          dispatch(
+          await dispatch(
             updateRoute({
               page: {
                 routeId: values.routeId,

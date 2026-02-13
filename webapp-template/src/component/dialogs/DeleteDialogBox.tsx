@@ -81,46 +81,55 @@ const DeleteContentDialogBox = ({
   };
 
   const dialogBoxHandler = () => {
-    handleClose();
     switch (type) {
       case "content":
+        if(contentId == null || sectionId == null) return;
+        handleClose();
         dispatch(
           deleteContent({
             routeId: route.routeId,
-            contentId: contentId ? contentId : 0,
-            sectionId: sectionId ? sectionId : 0,
+            contentId,
+            sectionId,
           }),
         );
         break;
       case "section":
+        if(sectionId == null) return;
+        handleClose();
         dispatch(
           deleteSection({
             routeId: route.routeId,
-            sectionId: sectionId ? sectionId : 0,
+            sectionId,
             routePath: window.location.pathname,
           }),
         );
         break;
       case "page":
+        if(routeId == null) return;
+        handleClose();
         dispatch(
           deleteRoute({
-            routeId: routeId!,
+            routeId,
             routePath: window.location.pathname,
           }),
         );
         break;
       case "route_content":
+        if(contentId == null) return;
+        handleClose();
         dispatch(
           deleteRouteContent({
             routeId: route.routeId,
-            contentId: contentId ?? 0,
+            contentId,
           }),
         );
         break;
       case "testimonial":
+        if(testimonialId == null) return;
+        handleClose();
         dispatch(
           deleteCustomerTestimonial({
-            id: testimonialId ?? 0,
+            id: testimonialId,
           }),
         );
         break;
