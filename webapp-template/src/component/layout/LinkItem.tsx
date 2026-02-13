@@ -45,7 +45,7 @@ const ListItemLink = (props: ListItemLinkProps) => {
   // The Redux state will update via the useEffect below
 
   useEffect(() => {
-    if (matchPath(pathname, to) !== null) {
+    if (matchPath(to, pathname) !== null) {
       dispatch(updateRouteId(routeId));
       dispatch(updateRouterPath({ routeId, currentPath: to, label, children: children || [] }));
     }
@@ -206,7 +206,7 @@ const ListItemLink = (props: ListItemLinkProps) => {
                   label={item.menuItem}
                   primary={item.menuItem}
                   handleSideBar={handleSideBar}
-                  isActive={matchPath(pathname, item.path) !== null}
+                  isActive={matchPath(item.path, pathname) !== null}
                   children={item.children}
                   level={level + 1}
                 />

@@ -13,20 +13,11 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
-import { RootState, useAppDispatch, useAppSelector } from "@slices/store";
-import {
-  CropSizingInfo,
-  CustomStylingInfo,
-  SectionDialogBoxProps,
-  validationSectionSchema,
-} from "../../types/types";
-import { createNewSection, updateSection } from "@slices/sectionSlice/section";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
+import CategoryIcon from "@mui/icons-material/Category";
+import CloseIcon from "@mui/icons-material/Close";
+import DescriptionIcon from "@mui/icons-material/Description";
+import LinkIcon from "@mui/icons-material/Link";
+import TitleIcon from "@mui/icons-material/Title";
 import {
   Box,
   FormControl,
@@ -41,20 +32,30 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import { useFormik } from "formik";
-import { SectionType } from "@utils/types";
-import { useEffect, useRef, useState } from "react";
-import LinkIcon from "@mui/icons-material/Link";
-import CloseIcon from "@mui/icons-material/Close";
-import DescriptionIcon from "@mui/icons-material/Description";
-import TitleIcon from "@mui/icons-material/Title";
-import CategoryIcon from "@mui/icons-material/Category";
-import { SkeletonCard } from "@component/ui/content/SkeletonCard";
-import RichTextEditor from "@component/common/RichTextEditor";
 import Cropper, { Area, Point } from "react-easy-crop";
+
+import { useEffect, useRef, useState } from "react";
+
+import RichTextEditor from "@component/common/RichTextEditor";
+import { SkeletonCard } from "@component/ui/content/SkeletonCard";
 import { getAllTags } from "@slices/pageSlice/page";
+import { createNewSection, updateSection } from "@slices/sectionSlice/section";
+import { RootState, useAppDispatch, useAppSelector } from "@slices/store";
+import { SectionType } from "@utils/types";
+
+import {
+  CropSizingInfo,
+  CustomStylingInfo,
+  SectionDialogBoxProps,
+  validationSectionSchema,
+} from "../../types/types";
 import { TagResponse } from "../../types/types";
-import { safeParseHtml } from "@utils/safeHtml";
 
 const SectionDialogBox = ({
   type,
@@ -65,20 +66,29 @@ const SectionDialogBox = ({
 }: SectionDialogBoxProps) => {
   const routeId = useAppSelector((state: RootState) => state.route.routeId);
   const dispatch = useAppDispatch();
+
   const tagInfo = useAppSelector((state: RootState) =>
-    state.page.tagData.map((tag: TagResponse) => tag.tagName)
+    (state.page.tagData ?? []).map((tag: TagResponse) => tag.tagName),
   );
+
   const theme = useTheme();
+  const orange100 = (theme.palette as any).orange?.[100] ?? theme.palette.secondary.main;
+
+  const normalizeQuillHtml = (html: string) => {
+    const v = (html ?? "").trim();
+
+    if (v === "" || v === "<p><br></p>" || v === "<p></p>") return "";
+
+    return v;
+  };
 
   const [isImageSelected, setIsImageSelected] = useState(
-    initialValues?.sectionType === SectionType.Image
+    initialValues?.sectionType === SectionType.Image,
   );
 
-  const [useTitleRichText] = useState(
-    initialValues?.customSectionTheme?.title?.richText || false
-  );
+  const [useTitleRichText] = useState(initialValues?.customSectionTheme?.title?.richText || false);
   const [useDescriptionRichText] = useState(
-    initialValues?.customSectionTheme?.description?.richText || false
+    initialValues?.customSectionTheme?.description?.richText || false,
   );
 
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
@@ -90,10 +100,9 @@ const SectionDialogBox = ({
     CustomStylingInfo | undefined
   >(initialValues?.customSectionTheme?.title);
 
-  const [descriptionDefaultStyleConfigs, setDescriptionDefaultStyleConfigs] =
-    useState<CustomStylingInfo | undefined>(
-      initialValues?.customSectionTheme?.description
-    );
+  const [descriptionDefaultStyleConfigs, setDescriptionDefaultStyleConfigs] = useState<
+    CustomStylingInfo | undefined
+  >(initialValues?.customSectionTheme?.description);
 
   const [croppedImageDefaultSizing, setCroppedImageDefaultSizing] = useState<
     CropSizingInfo | undefined
@@ -123,17 +132,15 @@ const SectionDialogBox = ({
   const dialogBoxTitle = () => {
     if (type === "add") {
       return `Add New Section`;
-    } else {
-      return `Update Section`;
     }
+    return `Update Section`;
   };
 
   const dialogSubtitle = () => {
     if (type === "add") {
       return `Create a new section for your page`;
-    } else {
-      return `Update section details and settings`;
     }
+    return `Update section details and settings`;
   };
 
   const formik = useFormik({
@@ -142,9 +149,7 @@ const SectionDialogBox = ({
       description: initialValues?.description ? initialValues.description : "",
       sectionType: initialValues?.sectionType ? initialValues.sectionType : "",
       imageUrl: initialValues?.imageUrl ? initialValues.imageUrl : undefined,
-      redirectUrl: initialValues?.redirectUrl
-        ? initialValues.redirectUrl
-        : undefined,
+      redirectUrl: initialValues?.redirectUrl ? initialValues.redirectUrl : undefined,
       tags: initialValues?.tags ? initialValues.tags : "",
     },
     enableReinitialize: true,
@@ -164,11 +169,12 @@ const SectionDialogBox = ({
                 },
               },
               routePath: window.location.pathname,
-            })
+            }),
           );
           break;
-        case "update":
-          { const updatedSection = {
+
+        case "update": {
+          const updatedSection = {
             ...values,
           };
           dispatch(
@@ -188,9 +194,10 @@ const SectionDialogBox = ({
                 },
               },
               routePath: window.location.pathname,
-            })
+            }),
           );
-          break; }
+          break;
+        }
       }
       handleClose();
       formik.resetForm();
@@ -198,22 +205,14 @@ const SectionDialogBox = ({
   });
 
   useEffect(() => {
-    if (
-      useTitleRichText &&
-      formik.values.title &&
-      !titleDefaultStyleConfigs?.htmlContent
-    ) {
+    if (useTitleRichText && formik.values.title && !titleDefaultStyleConfigs?.htmlContent) {
       setTitleDefaultStyleConfigs((prev) => ({
         ...prev,
         richText: true,
         htmlContent: formik.values.title,
       }));
     }
-  }, [
-    useTitleRichText,
-    formik.values.title,
-    titleDefaultStyleConfigs?.htmlContent,
-  ]);
+  }, [useTitleRichText, formik.values.title, titleDefaultStyleConfigs?.htmlContent]);
 
   useEffect(() => {
     if (
@@ -248,19 +247,14 @@ const SectionDialogBox = ({
     >
       <DialogTitle
         sx={{
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.orange[100]} 100%)`,
+          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${orange100} 100%)`,
           color: theme.palette.common.white,
           py: 2.5,
           pb: 3,
           position: "relative",
         }}
       >
-        <Typography
-          variant="h4"
-          fontWeight="bold"
-          gutterBottom
-          sx={{ mb: 0.5 }}
-        >
+        <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ mb: 0.5 }}>
           {dialogBoxTitle()}
         </Typography>
         <Typography variant="body2" sx={{ opacity: 0.95 }}>
@@ -306,33 +300,27 @@ const SectionDialogBox = ({
                   setIsImageSelected(event.target.value === SectionType.Image);
                 }}
                 onBlur={formik.handleBlur}
-                error={
-                  formik.touched.sectionType &&
-                  Boolean(formik.errors.sectionType)
-                }
+                error={formik.touched.sectionType && Boolean(formik.errors.sectionType)}
                 displayEmpty
               >
                 <MenuItem value="" disabled>
                   Select section type
                 </MenuItem>
-                {Object.values(SectionType).map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type}
+                {Object.values(SectionType).map((t) => (
+                  <MenuItem key={t} value={t}>
+                    {t}
                   </MenuItem>
                 ))}
               </Select>
               {formik.touched.sectionType && formik.errors.sectionType && (
-                <FormHelperText error>
-                  {formik.errors.sectionType}
-                </FormHelperText>
+                <FormHelperText error>{formik.errors.sectionType}</FormHelperText>
               )}
             </FormControl>
           </Box>
+
           <Box>
             <Box sx={{ display: "flex", alignItems: "center", mb: 1.5 }}>
-              <CategoryIcon
-                sx={{ color: theme.palette.primary.main, mr: 1, fontSize: 22 }}
-              />
+              <CategoryIcon sx={{ color: theme.palette.primary.main, mr: 1, fontSize: 22 }} />
               <Typography variant="h6" fontWeight="700">
                 Redirection URL (Optional)
               </Typography>
@@ -343,12 +331,8 @@ const SectionDialogBox = ({
               placeholder="https://example.com/redirect"
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
-              error={
-                formik.touched.redirectUrl && Boolean(formik.errors.redirectUrl)
-              }
-              helperText={
-                formik.touched.redirectUrl && formik.errors.redirectUrl
-              }
+              error={formik.touched.redirectUrl && Boolean(formik.errors.redirectUrl)}
+              helperText={formik.touched.redirectUrl && formik.errors.redirectUrl}
               value={formik.values.redirectUrl}
             />
           </Box>
@@ -371,21 +355,22 @@ const SectionDialogBox = ({
                 </Box>
                 <Box sx={{ position: "relative" }}>
                   <RichTextEditor
-                    value={
-                      titleDefaultStyleConfigs?.htmlContent ||
-                      formik.values.title
-                    }
-                    onChange={(html) => {
+                    value={titleDefaultStyleConfigs?.htmlContent || formik.values.title}
+                    onChange={(rawHtml) => {
+                      const html = normalizeQuillHtml(rawHtml);
+
                       setTitleDefaultStyleConfigs({
                         ...titleDefaultStyleConfigs,
                         richText: true,
                         htmlContent: html,
                       });
+
                       const tempDiv = document.createElement("div");
                       tempDiv.innerHTML = html;
+
                       formik.setFieldValue(
                         "title",
-                        tempDiv.textContent || tempDiv.innerText || ""
+                        (tempDiv.textContent || tempDiv.innerText || "").trim(),
                       );
                     }}
                     placeholder="Enter image title"
@@ -419,9 +404,7 @@ const SectionDialogBox = ({
                   placeholder="https://example.com/image.jpg"
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  error={
-                    formik.touched.imageUrl && Boolean(formik.errors.imageUrl)
-                  }
+                  error={formik.touched.imageUrl && Boolean(formik.errors.imageUrl)}
                   helperText={formik.touched.imageUrl && formik.errors.imageUrl}
                   value={formik.values.imageUrl}
                 />
@@ -463,18 +446,8 @@ const SectionDialogBox = ({
                       objectFit="horizontal-cover"
                     />
                   </Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 2,
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      fontWeight="600"
-                      sx={{ minWidth: 60 }}
-                    >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Typography variant="body2" fontWeight="600" sx={{ minWidth: 60 }}>
                       Zoom
                     </Typography>
                     <Slider
@@ -483,9 +456,7 @@ const SectionDialogBox = ({
                       max={3}
                       step={0.1}
                       onChange={(_e, zoomVal) => setZoom(Number(zoomVal))}
-                      sx={{
-                        color: theme.palette.primary.main,
-                      }}
+                      sx={{ color: theme.palette.primary.main }}
                     />
                   </Box>
                 </Box>
@@ -509,21 +480,22 @@ const SectionDialogBox = ({
                 </Box>
                 <Box sx={{ position: "relative" }}>
                   <RichTextEditor
-                    value={
-                      titleDefaultStyleConfigs?.htmlContent ||
-                      formik.values.title
-                    }
-                    onChange={(html) => {
+                    value={titleDefaultStyleConfigs?.htmlContent || formik.values.title}
+                    onChange={(rawHtml) => {
+                      const html = normalizeQuillHtml(rawHtml);
+
                       setTitleDefaultStyleConfigs({
                         ...titleDefaultStyleConfigs,
                         richText: true,
                         htmlContent: html,
                       });
+
                       const tempDiv = document.createElement("div");
                       tempDiv.innerHTML = html;
+
                       formik.setFieldValue(
                         "title",
-                        tempDiv.textContent || tempDiv.innerText || ""
+                        (tempDiv.textContent || tempDiv.innerText || "").trim(),
                       );
                     }}
                     placeholder="Enter section title (select text to format specific words)"
@@ -553,21 +525,22 @@ const SectionDialogBox = ({
                 </Box>
                 <Box sx={{ position: "relative" }}>
                   <RichTextEditor
-                    value={
-                      descriptionDefaultStyleConfigs?.htmlContent ||
-                      formik.values.description
-                    }
-                    onChange={(html) => {
+                    value={descriptionDefaultStyleConfigs?.htmlContent || formik.values.description}
+                    onChange={(rawHtml) => {
+                      const html = normalizeQuillHtml(rawHtml);
+
                       setDescriptionDefaultStyleConfigs({
                         ...descriptionDefaultStyleConfigs,
                         richText: true,
                         htmlContent: html,
                       });
+
                       const tempDiv = document.createElement("div");
                       tempDiv.innerHTML = html;
+
                       formik.setFieldValue(
                         "description",
-                        tempDiv.textContent || tempDiv.innerText || ""
+                        (tempDiv.textContent || tempDiv.innerText || "").trim(),
                       );
                     }}
                     placeholder="Describe the purpose and content of this section..."
@@ -602,43 +575,46 @@ const SectionDialogBox = ({
                   >
                     <Box sx={{ mb: 1.5 }}>
                       {titleDefaultStyleConfigs?.htmlContent ? (
-                        <Typography
-                          variant="h6"
-                          fontWeight="bold"
-                          sx={{ mb: 0.5, "& p": { margin: 0 } }}
-                        >
-                          {safeParseHtml(titleDefaultStyleConfigs.htmlContent)}
-                        </Typography>
+                        <Box
+                          sx={{
+                            mb: 0.5,
+                            fontWeight: "bold",
+                            fontSize: theme.typography.h6.fontSize,
+                            lineHeight: theme.typography.h6.lineHeight,
+                            "& p": { margin: 0 },
+                            "& p + p": { marginTop: 1 },
+                          }}
+                          dangerouslySetInnerHTML={{
+                            __html: titleDefaultStyleConfigs.htmlContent || "",
+                          }}
+                        />
                       ) : (
-                        <Typography
-                          variant="h6"
-                          fontWeight="bold"
-                          sx={{ mb: 0.5 }}
-                        >
+                        <Typography variant="h6" fontWeight="bold" sx={{ mb: 0.5 }}>
                           {formik.values.title || "Section Title"}
                         </Typography>
                       )}
+
                       {descriptionDefaultStyleConfigs?.htmlContent ? (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mb: 2, "& p": { margin: 0 } }}
-                        >
-                          {safeParseHtml(
-                            descriptionDefaultStyleConfigs.htmlContent
-                          )}
-                        </Typography>
+                        <Box
+                          sx={{
+                            mb: 2,
+                            color: theme.palette.text.secondary,
+                            fontSize: theme.typography.body2.fontSize,
+                            lineHeight: theme.typography.body2.lineHeight,
+                            "& p": { margin: 0 },
+                            "& p + p": { marginTop: 1 },
+                          }}
+                          dangerouslySetInnerHTML={{
+                            __html: descriptionDefaultStyleConfigs.htmlContent || "",
+                          }}
+                        />
                       ) : (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mb: 2 }}
-                        >
-                          {formik.values.description ||
-                            "Section description will appear here"}
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          {formik.values.description || "Section description will appear here"}
                         </Typography>
                       )}
                     </Box>
+
                     <Stack direction="row" spacing={2} flexWrap="wrap">
                       {[...Array(3)].map((_, index) => (
                         <Box

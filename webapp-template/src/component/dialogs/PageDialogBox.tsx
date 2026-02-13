@@ -13,36 +13,26 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
-import React, { useState } from "react";
-import { useAppDispatch, useAppSelector, RootState } from "@slices/store";
-import { createNewRoute, updateRoute } from "@slices/routeSlice/route";
-import {
-  CustomStylingInfo,
-  PageDialogBoxProps,
-  validationPageSchema,
-} from "../../types/types";
+import CloseIcon from "@mui/icons-material/Close";
+import DescriptionIcon from "@mui/icons-material/Description";
+import TitleIcon from "@mui/icons-material/Title";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import { Box, IconButton, Stack, Switch, Typography, useTheme } from "@mui/material";
 import Button from "@mui/material/Button";
-import {
-  IconButton,
-  useTheme,
-  Box,
-  Typography,
-  Switch,
-  Stack,
-} from "@mui/material";
-import TextField from "@mui/material/TextField";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-import CloseIcon from "@mui/icons-material/Close";
-import DescriptionIcon from "@mui/icons-material/Description";
-import TitleIcon from '@mui/icons-material/Title';
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import { useNavigate } from "react-router-dom";
+import TextField from "@mui/material/TextField";
 import { useFormik } from "formik";
+
+import React, { useState } from "react";
+
 import StylePicker from "@component/common/StylePicker";
+import { createNewRoute, updateRoute } from "@slices/routeSlice/route";
+import { RootState, useAppDispatch, useAppSelector } from "@slices/store";
+
+import { CustomStylingInfo, PageDialogBoxProps, validationPageSchema } from "../../types/types";
 
 const PageDialogBox = ({
   open,
@@ -53,23 +43,19 @@ const PageDialogBox = ({
 }: PageDialogBoxProps) => {
   const formData = useAppSelector((state: RootState) => state.route);
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const theme = useTheme();
   const [isTitleSelected, setIsTitleSelected] = useState(false);
   const [isDescriptionSelected, setIsDescriptionSelected] = useState(false);
   const [titleDefaultStyleConfigs, setTitleDefaultStyleConfigs] = useState<
     CustomStylingInfo | undefined
   >(initialValues?.customPageTheme?.title);
-  const [descriptionDefaultStyleConfigs, setDescriptionDefaultStyleConfigs] =
-    useState<CustomStylingInfo | undefined>(
-      initialValues?.customPageTheme?.description
-    );
+  const [descriptionDefaultStyleConfigs, setDescriptionDefaultStyleConfigs] = useState<
+    CustomStylingInfo | undefined
+  >(initialValues?.customPageTheme?.description);
 
   const dialogBoxType = () => (type === "add" ? "Add New Page" : "Update Page");
   const dialogSubtitle = () =>
-    type === "add"
-      ? "Create a new page for sales pitstop"
-      : "Update page details";
+    type === "add" ? "Create a new page for sales pitstop" : "Update page details";
 
   const formik = useFormik({
     initialValues: {
@@ -88,8 +74,7 @@ const PageDialogBox = ({
               newContent: {
                 label: values.label,
                 title: values.title,
-                description:
-                  values.description !== "" ? values.description : undefined,
+                description: values.description !== "" ? values.description : undefined,
                 parentId,
                 customPageTheme: {
                   title: titleDefaultStyleConfigs,
@@ -98,7 +83,7 @@ const PageDialogBox = ({
                 isVisible: values.isVisible,
               },
               routePath: window.location.pathname,
-            })
+            }),
           );
           break;
         case "update":
@@ -116,7 +101,7 @@ const PageDialogBox = ({
                 isVisible: values.isVisible,
               },
               routePath: window.location.pathname,
-            })
+            }),
           );
           break;
       }
@@ -152,12 +137,7 @@ const PageDialogBox = ({
           position: "relative",
         }}
       >
-        <Typography
-          variant="h4"
-          fontWeight="bold"
-          gutterBottom
-          sx={{ mb: 0.5 }}
-        >
+        <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ mb: 0.5 }}>
           {dialogBoxType()}
         </Typography>
         <Typography variant="body2" sx={{ opacity: 0.95 }}>
@@ -183,7 +163,7 @@ const PageDialogBox = ({
           <Box>
             <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
               <DescriptionIcon
-              sx={{ color: theme.palette.primary.main, mr: 1, fontSize: 22, mt: 2 }}
+                sx={{ color: theme.palette.primary.main, mr: 1, fontSize: 22, mt: 2 }}
               />
               <Typography variant="h6" fontWeight="600" mt={2}>
                 Menu Name
@@ -276,13 +256,8 @@ const PageDialogBox = ({
                   setIsDescriptionSelected(true);
                   setIsTitleSelected(false);
                 }}
-                error={
-                  formik.touched.description &&
-                  Boolean(formik.errors.description)
-                }
-                helperText={
-                  formik.touched.description && formik.errors.description
-                }
+                error={formik.touched.description && Boolean(formik.errors.description)}
+                helperText={formik.touched.description && formik.errors.description}
                 value={formik.values.description}
                 inputProps={{
                   style: {
@@ -321,9 +296,7 @@ const PageDialogBox = ({
                 justifyContent: "space-between",
                 p: 2,
                 backgroundColor:
-                  theme.palette.mode === "dark"
-                    ? theme.palette.grey[800]
-                    : theme.palette.grey[50],
+                  theme.palette.mode === "dark" ? theme.palette.grey[800] : theme.palette.grey[50],
                 borderRadius: 2,
               }}
             >
@@ -343,27 +316,19 @@ const PageDialogBox = ({
                     variant="body2"
                     fontWeight="600"
                     sx={{
-                      color:
-                        theme.palette.mode === "dark"
-                          ? theme.palette.common.white
-                          : "inherit",
+                      color: theme.palette.mode === "dark" ? theme.palette.common.white : "inherit",
                     }}
                   >
-                    {formik.values.isVisible
-                      ? "Hide Subpage Cards"
-                      : "Show Subpage Cards"}
+                    {formik.values.isVisible ? "Hide Subpage Cards" : "Show Subpage Cards"}
                   </Typography>
                   <Typography
                     variant="caption"
                     sx={{
                       color:
-                        theme.palette.mode === "dark"
-                          ? theme.palette.grey[400]
-                          : "text.secondary",
+                        theme.palette.mode === "dark" ? theme.palette.grey[400] : "text.secondary",
                     }}
                   >
-                    Toggle visibility of the sub-page cards and the Add Content
-                    card on this page
+                    Toggle visibility of the sub-page cards and the Add Content card on this page
                   </Typography>
                 </Box>
               </Box>
@@ -421,7 +386,6 @@ const PageDialogBox = ({
           {type === "add" ? "Add Page" : "Update Page"}
         </Button>
       </DialogActions>
-      {formData.state === "failed" ?? navigate("/")}
     </Dialog>
   );
 };

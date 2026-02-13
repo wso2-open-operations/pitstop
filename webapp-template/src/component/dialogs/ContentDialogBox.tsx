@@ -27,7 +27,7 @@ import {
   CustomStylingInfo,
   TagResponse,
   validationContentSchema,
-} from "@/types/types";
+} from "../../types/types";
 import React, { useState, useRef, useEffect } from "react";
 import {
   Dialog,
@@ -113,7 +113,7 @@ const ContentDialogBox = ({
       contentLink: initialValues?.contentLink ? initialValues.contentLink : "",
       contentType: initialValues?.contentType ? initialValues.contentType : "",
       contentSubtype:
-        (initialValues && 'contentSubtype' in initialValues ? initialValues.contentSubtype : undefined) || CONTENT_SUBTYPE.Generic,
+        (initialValues as any)?.contentSubtype || CONTENT_SUBTYPE.Generic,
       description: initialValues?.description ? initialValues.description : "",
       thumbnail: initialValues?.thumbnail ? initialValues.thumbnail : "",
       note: initialValues?.note ? initialValues.note : "",
@@ -221,7 +221,7 @@ const ContentDialogBox = ({
     <Dialog open={isOpen} onClose={handleDialogClose} maxWidth="sm" fullWidth>
       <DialogTitle
         sx={{
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.orange[100]} 100%)`,
           color: theme.palette.common.white,
           py: 2.5,
           pb: 3,
@@ -491,7 +491,7 @@ const ContentDialogBox = ({
                 return filtered;
               }}
               value={formik.values.tags}
-              onChange={async (_event, newValue) => {
+              onChange={async (event, newValue) => {
                 const finalValue: string[] = [];
                 for (const value of newValue) {
                   if (value.startsWith('Add "')) {
@@ -664,17 +664,17 @@ const ContentDialogBox = ({
 
         <Button
           variant="contained"
-          onClick={() =>
-            formik.handleSubmit()
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
+            formik.handleSubmit(e as any)
           }
           disabled={!formik.isValid}
           sx={{
             textTransform: "none",
             px: 3,
             color: theme.palette.common.white,
-            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.orange[100]} 100%)`,
             "&:hover": {
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.orange[200]} 100%)`,
             },
           }}
         >

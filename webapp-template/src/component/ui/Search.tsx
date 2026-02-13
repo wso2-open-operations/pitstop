@@ -38,6 +38,9 @@ import { TagResponse } from "src/types/types";
 import { useLocation } from "react-router-dom";
 
 export declare let _paq: unknown[];
+if (typeof window !== "undefined") {
+  (window as Window & { _paq?: unknown[] })._paq ??= [];
+}
 
 export default function Search() {
   const [selectedTags, setSelectedTags] = useState<TagResponse[]>([]);

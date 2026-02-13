@@ -106,9 +106,9 @@ const ViewContent: React.FC<ContentsProps> = ({
       const newItems = arrayMove(orderSections, oldIndex, newIndex);
       setOrderSections(newItems);
 
-      const reorderData = tempOrderSections.map((original, index) => ({
-        sectionId: newItems[index].sectionId,
-        sectionOrder: original.sectionOrder,
+      const reorderData = newItems.map((section, index) => ({
+        sectionId: section.sectionId,
+        sectionOrder: index,
       }));
 
       dispatch(reorderSections({ reorderSections: reorderData }))
@@ -118,7 +118,7 @@ const ViewContent: React.FC<ContentsProps> = ({
           setOrderSections(orderSections);
         });
     },
-    [orderSections, dispatch, tempOrderSections]
+    [orderSections, dispatch]
   );
 
   useEffect(() => {

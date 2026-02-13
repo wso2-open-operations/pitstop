@@ -43,7 +43,7 @@ const ImageSection = ({
           console.error(e);
         });
     }
-  }, []);
+  }, [imageUrl, cropSizing]);
 
   return (
     <Box

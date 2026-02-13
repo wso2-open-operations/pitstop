@@ -68,6 +68,42 @@ import { useLocation, matchPath, useNavigate } from "react-router-dom";
 import { RouteResponse } from "../../types/types";
 import LogoutOutlined from "@mui/icons-material/LogoutOutlined";
 
+const StyledAppBar = styled(MuiAppBar)<MuiAppBarProps>(({ theme }) => ({
+  position: "fixed",
+  top: "16px",
+  left: "16px",
+  right: "16px",
+  width: "calc(100% - 32px)",
+  zIndex: theme.zIndex.drawer + 1,
+  background:
+    theme.palette.mode === "dark"
+      ? "rgba(18, 18, 18, 0.7)"
+      : "rgba(255, 255, 255, 0.7)",
+
+  backdropFilter: "blur(30px) saturate(180%)",
+  WebkitBackdropFilter: "blur(30px) saturate(180%)",
+
+  border: `1px solid ${
+    theme.palette.mode === "dark"
+      ? "rgba(255, 255, 255, 0.15)"
+      : "rgba(255, 255, 255, 0.8)"
+  }`,
+
+  borderRadius: "50px",
+
+  boxShadow:
+    theme.palette.mode === "dark"
+      ? "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+      : "0 8px 32px rgba(31, 38, 135, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+
+  transition: theme.transitions.create(
+    ["background-color", "transform", "backdrop-filter", "box-shadow"],
+    {
+      duration: theme.transitions.duration.standard,
+    }
+  ),
+}));
+
 const filterPubliclyVisibleRoutes = (
   routes: RouteResponse[]
 ): RouteResponse[] => {
@@ -197,42 +233,6 @@ const Header = (props: HeaderProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
 
-  const AppBar = styled(MuiAppBar)<MuiAppBarProps>(({ theme }) => ({
-    position: "fixed",
-    top: "16px",
-    left: "16px",
-    right: "16px",
-    width: "calc(100% - 32px)",
-    zIndex: theme.zIndex.drawer + 1,
-    background:
-      theme.palette.mode === "dark"
-        ? "rgba(18, 18, 18, 0.7)"
-        : "rgba(255, 255, 255, 0.7)",
-
-    backdropFilter: "blur(30px) saturate(180%)",
-    WebkitBackdropFilter: "blur(30px) saturate(180%)",
-
-    border: `1px solid ${
-      theme.palette.mode === "dark"
-        ? "rgba(255, 255, 255, 0.15)"
-        : "rgba(255, 255, 255, 0.8)"
-    }`,
-
-    borderRadius: "50px",
-
-    boxShadow:
-      theme.palette.mode === "dark"
-        ? "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
-        : "0 8px 32px rgba(31, 38, 135, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
-
-    transition: theme.transitions.create(
-      ["background-color", "transform", "backdrop-filter", "box-shadow"],
-      {
-        duration: theme.transitions.duration.standard,
-      }
-    ),
-  }));
-
   const checkScrollTop = () => {
     if (scrollButtonRef.current) {
       if (window.scrollY > 100) scrollButtonRef.current.style.display = "block";
@@ -284,7 +284,7 @@ const Header = (props: HeaderProps) => {
       {(colorMode) => (
         <Box>
           <CssBaseline />
-          <AppBar sx={{ position: "absolute" }}>
+          <StyledAppBar sx={{ position: "absolute" }}>
             <Toolbar>
               <IconButton
                 aria-label="open drawer"
@@ -555,7 +555,7 @@ const Header = (props: HeaderProps) => {
                 )}
               </Stack>
             </Toolbar>
-          </AppBar>
+          </StyledAppBar>
 
           <nav>
             <Sidebar

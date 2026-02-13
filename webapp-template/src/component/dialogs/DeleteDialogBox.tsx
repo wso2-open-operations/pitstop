@@ -25,7 +25,6 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import { Box, IconButton, Typography, useTheme } from "@mui/material";
-import { useNavigate } from "react-router-dom";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CloseIcon from "@mui/icons-material/Close";
 import { deleteCustomerTestimonial } from "@slices/customerTestimonialSlice/customerTestimonial";
@@ -42,7 +41,6 @@ const DeleteContentDialogBox = ({
   const route = useAppSelector((state: RootState) => state.route);
   const dispatch = useAppDispatch();
   const theme = useTheme();
-  const navigate = useNavigate();
 
   const dialogBoxTitle = () => {
     switch (type) {
@@ -91,7 +89,7 @@ const DeleteContentDialogBox = ({
             routeId: route.routeId,
             contentId: contentId ? contentId : 0,
             sectionId: sectionId ? sectionId : 0,
-          })
+          }),
         );
         break;
       case "section":
@@ -100,7 +98,7 @@ const DeleteContentDialogBox = ({
             routeId: route.routeId,
             sectionId: sectionId ? sectionId : 0,
             routePath: window.location.pathname,
-          })
+          }),
         );
         break;
       case "page":
@@ -108,7 +106,7 @@ const DeleteContentDialogBox = ({
           deleteRoute({
             routeId: routeId!,
             routePath: window.location.pathname,
-          })
+          }),
         );
         break;
       case "route_content":
@@ -116,14 +114,14 @@ const DeleteContentDialogBox = ({
           deleteRouteContent({
             routeId: route.routeId,
             contentId: contentId ?? 0,
-          })
+          }),
         );
         break;
       case "testimonial":
         dispatch(
           deleteCustomerTestimonial({
             id: testimonialId ?? 0,
-          })
+          }),
         );
         break;
     }
@@ -131,8 +129,8 @@ const DeleteContentDialogBox = ({
 
   return (
     <>
-      <Dialog 
-        open={open} 
+      <Dialog
+        open={open}
         onClose={handleClose}
         maxWidth="sm"
         fullWidth
@@ -178,9 +176,8 @@ const DeleteContentDialogBox = ({
           <Box
             sx={{
               p: 3,
-              backgroundColor: theme.palette.mode === "dark" 
-                ? theme.palette.grey[800] 
-                : theme.palette.grey[50],
+              backgroundColor:
+                theme.palette.mode === "dark" ? theme.palette.grey[800] : theme.palette.grey[50],
             }}
           >
             <Typography variant="body1" sx={{ lineHeight: 1.6 }} mt={2}>
@@ -220,16 +217,19 @@ const DeleteContentDialogBox = ({
                 backgroundColor: theme.palette.redAccent[100],
               },
               color: theme.palette.common.white,
-              
             }}
           >
-            Delete {type === "content" || type === "route_content" ? "Content" : type === "section" ? "Section" : type === "page" ? "Page" : "Testimonial"}
+            Delete{" "}
+            {type === "content" || type === "route_content"
+              ? "Content"
+              : type === "section"
+                ? "Section"
+                : type === "page"
+                  ? "Page"
+                  : "Testimonial"}
           </Button>
         </DialogActions>
       </Dialog>
-
-      {route.state === "success" ?? navigate("/")}
-      {route.state === "failed" ?? navigate("/")}
     </>
   );
 };

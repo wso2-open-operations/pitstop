@@ -128,9 +128,9 @@ const Section = ({
       const newItems = arrayMove(orderContents, oldIndex, newIndex);
       setOrderContents(newItems);
 
-      const reorderData = tempOrderContents.map((original, index) => ({
-        contentId: newItems[index].contentId,
-        contentOrder: original.contentOrder,
+      const reorderData = newItems.map((item, index) => ({
+        contentId: item.contentId,
+        contentOrder: index,
       }));
 
       dispatch(reorderContents({ sectionId, reorderContents: reorderData }))
@@ -140,7 +140,7 @@ const Section = ({
           setOrderContents(orderContents);
         });
     },
-    [orderContents, dispatch, sectionId, tempOrderContents]
+    [orderContents, dispatch, sectionId]
   );
 
   useEffect(() => {

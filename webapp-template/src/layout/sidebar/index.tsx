@@ -41,7 +41,7 @@ const Sidebar = (props: SidebarProps) => {
             label={r.menuItem}
             routeId={r.routeId}
             primary={r.menuItem}
-            isActive={matchPath(pathname, r.path) !== null}
+            isActive={matchPath(r.path, pathname) !== null}
             children={r.children}
             handleSideBar={props.handleDrawer}
             level={1}
