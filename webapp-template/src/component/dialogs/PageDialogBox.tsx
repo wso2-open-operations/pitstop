@@ -65,12 +65,11 @@ const PageDialogBox = ({
       description: initialValues?.description ? initialValues.description : "",
       isVisible: !!initialValues?.isVisible,
     },
-    enableReinitialize: true,
     validationSchema: validationPageSchema,
-    onSubmit: async (values) => {
+    onSubmit: (values) => {
       switch (type) {
         case "add":
-          await dispatch(
+          dispatch(
             createNewRoute({
               newContent: {
                 label: values.label,
@@ -85,10 +84,10 @@ const PageDialogBox = ({
               },
               routePath: window.location.pathname,
             }),
-          ).unwrap();
+          );
           break;
         case "update":
-          await dispatch(
+          dispatch(
             updateRoute({
               page: {
                 routeId: values.routeId,
@@ -289,7 +288,7 @@ const PageDialogBox = ({
           </Box>
 
           {/* Visibility toggle */}
-          {formData.label !== "home" && (
+          {formik.values.label !== "home" && (
             <Box
               sx={{
                 display: "flex",

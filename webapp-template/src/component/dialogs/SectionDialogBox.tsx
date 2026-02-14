@@ -83,16 +83,6 @@ const SectionDialogBox = ({
     initialValues?.sectionType === SectionType.Image,
   );
 
-  const [useTitleRichText] = useState(initialValues?.customSectionTheme?.title?.richText || false);
-  const [useDescriptionRichText] = useState(
-    initialValues?.customSectionTheme?.description?.richText || false,
-  );
-
-  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [cropWidth, setCropWidth] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const [titleDefaultStyleConfigs, setTitleDefaultStyleConfigs] = useState<
     CustomStylingInfo | undefined
   >(initialValues?.customSectionTheme?.title);
@@ -101,9 +91,29 @@ const SectionDialogBox = ({
     CustomStylingInfo | undefined
   >(initialValues?.customSectionTheme?.description);
 
+  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [cropWidth, setCropWidth] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const [croppedImageDefaultSizing, setCroppedImageDefaultSizing] = useState<
     CropSizingInfo | undefined
   >(initialValues?.customSectionTheme?.cropSizing);
+
+  // Derive richText flags from config states so they sync with form reinitialize
+  const useTitleRichText = titleDefaultStyleConfigs?.richText ?? false;
+  const useDescriptionRichText = descriptionDefaultStyleConfigs?.richText ?? false;
+
+  // Sync isImageSelected with initialValues when props change
+  useEffect(() => {
+    setIsImageSelected(initialValues?.sectionType === SectionType.Image);
+  }, [initialValues?.sectionType]);
+
+  // Sync config states with initialValues when props change
+  useEffect(() => {
+    setTitleDefaultStyleConfigs(initialValues?.customSectionTheme?.title);
+    setDescriptionDefaultStyleConfigs(initialValues?.customSectionTheme?.description);
+  }, [initialValues?.customSectionTheme?.title, initialValues?.customSectionTheme?.description]);
 
   const onCropComplete = (_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedImageDefaultSizing(croppedAreaPixels);
@@ -171,13 +181,16 @@ const SectionDialogBox = ({
           break;
 
         case "update": {
+          if (!sectionId) {
+            return;
+          }
           const updatedSection = {
             ...values,
           };
           dispatch(
             updateSection({
               section: {
-                sectionId: sectionId ? sectionId : 0,
+                sectionId,
                 title: updatedSection.title,
                 description: updatedSection.description,
                 sectionType: updatedSection.sectionType,
@@ -209,7 +222,7 @@ const SectionDialogBox = ({
         htmlContent: formik.values.title,
       }));
     }
-  }, [useTitleRichText, formik.values.title, titleDefaultStyleConfigs?.htmlContent]);
+  }, [useTitleRichText, formik.values.title, titleDefaultStyleConfigs]);
 
   useEffect(() => {
     if (
@@ -223,11 +236,7 @@ const SectionDialogBox = ({
         htmlContent: formik.values.description,
       }));
     }
-  }, [
-    useDescriptionRichText,
-    formik.values.description,
-    descriptionDefaultStyleConfigs?.htmlContent,
-  ]);
+  }, [useDescriptionRichText, formik.values.description, descriptionDefaultStyleConfigs]);
 
   return (
     <Dialog

@@ -53,6 +53,7 @@ import {
   ListItemIcon,
   ListItemButton,
   ListItemText,
+  Button
 } from "@mui/material";
 import { styled, Theme, useTheme } from "@mui/material/styles";
 import MuiAppBar, { AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";
@@ -471,23 +472,30 @@ const Header = (props: HeaderProps) => {
 
                 {userInfo && userInfo.email && (
                   <>
-                    <IconButton
+                    <Button
                       onClick={handleOpenUserMenu}
-                      size="small"
                       id="long-button"
+                      startIcon={
+                        <Avatar
+                          sx={{
+                            width: 35,
+                            height: 35,
+                            border: 1,
+                            borderColor: "primary.main",
+                          }}
+                          alt={userInfo.name}
+                          src={user?.employeeThumbnail}
+                        />
+                      }
+                      sx={{
+                        textTransform: "none",
+                        color: theme.palette.primary.contrastText,
+                        fontSize: "0.9rem",
+                        gap: 1,
+                      }}
                     >
-                      <Avatar
-                        sx={{
-                          width: 35,
-                          height: 35,
-                          border: 1,
-                          borderColor: "primary.main",
-                        }}
-                        alt={userInfo.name}
-                        src={user?.employeeThumbnail}
-                      />
                       {userInfo?.name}
-                    </IconButton>
+                    </Button>
 
                     {/* -----------DropDown When User clicks on user thumbnail------- */}
                     <Menu

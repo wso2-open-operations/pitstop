@@ -34,7 +34,7 @@ import {
   getAllTags,
   searchContent,
 } from "@slices/pageSlice/page";
-import { TagResponse } from "src/types/types";
+import { TagResponse } from "@/types/types";
 import { useLocation } from "react-router-dom";
 
 export declare let _paq: unknown[];
