@@ -38,7 +38,7 @@ public isolated function processTrendingContents() returns string[]|error {
         foreach Event event in events {
             string contentName = getContentName(event.label);
             if contentName != "" {
-                visitorCountMap[contentName] = (visitorCountMap[contentName] ?: 0) + event.nb_uniq_visitors;
+                visitorCountMap[contentName] = (visitorCountMap[contentName] ?: 0) + event.uniqueVisitors;
             }
         }
     }

@@ -35,7 +35,7 @@ type DatabaseConfig record {|
     int minIdleConnections = 5;
 |};
 
-# Route payload record.
+# Route payload.
 public type RoutePayload record {|
     # Parent ID
     int parentId;
@@ -89,7 +89,7 @@ public type CustomButton record {|
     string? updatedAt = ();
 |};
 
-# Custom button create payload record.
+# Custom button create payload.
 public type CustomButtonCreatePayload record {|
     # Content ID
     string contentId;
@@ -111,7 +111,7 @@ public type CustomButtonCreatePayload record {|
     int 'order;
 |};
 
-# Custom button update payload record.
+# Custom button update payload.
 public type CustomButtonUpdatePayload record {|
     # Content ID
     string? contentId = ();
@@ -328,7 +328,7 @@ public type CustomerTestimonial record {|
     boolean isShareable;
 |};
 
-# Customer testimonial create payload record.
+# Customer testimonial create payload.
 public type CustomerTestimonialCreatePayload record {|
     # Logo URL
     string logoUrl;
@@ -344,7 +344,7 @@ public type CustomerTestimonialCreatePayload record {|
     boolean? isShareable;
 |};
 
-# Customer testimonial update payload record.
+# Customer testimonial update payload.
 public type CustomerTestimonialUpdatePayload record {|
     # Logo URL
     string? logoUrl;

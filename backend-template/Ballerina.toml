@@ -16,8 +16,8 @@
 
 [package]
 org = "wso2"
-name = "se_wiki"
-version = "0.0.1"
+name = "pitstop"
+version = "0.1.0"
 distribution = "2201.13.1"
 
 [build-options]

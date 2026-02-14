@@ -13,14 +13,15 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 
+import ballerina/data.jsondata;
 
 # Event.
 public type Event record {|
     # Label
     string label;
     # Number of unique visitors
-    int  nb_uniq_visitors;
-    json...;
+    @jsondata:Name {value: "nb_uniq_visitors"}
+    int uniqueVisitors;
 |};
 
 # Request structure for analytics.

@@ -20,7 +20,7 @@ import ballerina/constraint;
 import ballerina/sql;
 import ballerina/time;
 
-# Route payload record.
+# Route payload.
 public type RoutePayload record {|
     # Parent ID
     int parentId;
@@ -39,7 +39,7 @@ public type RoutePayload record {|
     boolean isVisible;
 |};
 
-# Section payload record.
+# Section payload.
 public type SectionPayload record {|
     # Route ID
     @sql:Column {name: "route_id"}
@@ -68,7 +68,7 @@ public type SectionPayload record {|
     string tags?;
 |};
 
-# Content payload record.
+# Content payload.
 public type ContentPayload record {|
     # Section ID
     int sectionId;
@@ -95,7 +95,7 @@ public type ContentPayload record {|
     boolean isReused = false;
 |};
 
-# Comment payload record.
+# Comment payload.
 public type CommentPayload record {|
     # Id of the content
     int contentId;
@@ -103,7 +103,7 @@ public type CommentPayload record {|
     string comment;
 |};
 
-# Update route payload record.
+# Update route payload.
 public type UpdateRoutePayload record {|
     # route ID
     int routeId;
@@ -121,7 +121,7 @@ public type UpdateRoutePayload record {|
     boolean isVisible;
 |};
 
-# Update section payload record.
+# Update section payload.
 public type UpdateSectionPayload record {|
     # Section ID
     int sectionId;
@@ -141,7 +141,7 @@ public type UpdateSectionPayload record {|
     string tags?;
 |};
 
-# Update content payload record.
+# Update content payload.
 public type UpdateContentPayload record {|
     # Link to redirect to the content
     string? contentLink = ();
@@ -167,7 +167,7 @@ public type UpdateContentPayload record {|
     boolean isReused?;
 |};
 
-# Route response record.
+# Route response.
 public type RouteResponse record {|
     # Route ID
     int routeId;
@@ -183,7 +183,7 @@ public type RouteResponse record {|
     boolean isRouteVisible?;
 |};
 
-# Page response record.
+# Page response.
 public type PageResponse record {|
     # Page title
     string title;
@@ -197,7 +197,7 @@ public type PageResponse record {|
     boolean isVisible;
 |};
 
-# Section response record.
+# Section response.
 public type SectionResponse record {|
     # Section id
     int sectionId;
@@ -221,7 +221,7 @@ public type SectionResponse record {|
     string tags?;
 |};
 
-# Content response record.
+# Content response.
 public type ContentResponse record {|
     # Content ID
     int contentId;
@@ -259,7 +259,7 @@ public type ContentResponse record {|
     boolean isReused;
 |};
 
-# Comment response record.
+# Comment response.
 public type CommentResponse record {|
     # Id of the comment
     int commentId;
@@ -275,7 +275,7 @@ public type CommentResponse record {|
     string? userThumbnail;
 |};
 
-# Tag response record.
+# Tag response.
 public type TagResponse record {|
     # Tag name
     string tagName;
@@ -283,7 +283,7 @@ public type TagResponse record {|
     string color;
 |};
 
-# Route helper record.
+# Route helper.
 public type Route record {|
     # Route ID
     @sql:Column {name: "route_id"}
@@ -569,7 +569,7 @@ public type Routes record {|
     int isRouteVisible;
 |};
 
-# Pin content payload record.
+# Pin content payload.
 public type PinContentPayload record {|
     # Content ID to pin
     int contentId;

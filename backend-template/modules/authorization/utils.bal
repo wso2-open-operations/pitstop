@@ -14,21 +14,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
+# Check permissions.
 #
 # + requiredRoles - Required Role list
 # + userRoles - Roles list, the user has
-# + return - Allow or not 
-public isolated function checkRoles(string[] requiredRoles, string[] userRoles) returns boolean {
-    if requiredRoles.length() > userRoles.length() {
+# + return - Allow or not
+public isolated function checkPermission(string[] requiredRoles, string[] userRoles) returns boolean {
+    if userRoles.length() == 0 && requiredRoles.length() > 0 {
         return false;
     }
 
-    boolean allow = true;
-    foreach string role in requiredRoles {
-        if userRoles.indexOf(role) is () {
-            return false;
-        }
-    }
-
-    return allow;
+    final string[] & readonly userRolesReadOnly = userRoles.cloneReadOnly();
+    return requiredRoles.every(role => userRolesReadOnly.indexOf(role) !is ());
 }

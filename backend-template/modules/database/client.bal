@@ -25,7 +25,7 @@ final mysql:Client dbClient = check new (
     host = databaseConfig.host,
     options = {
         ssl: {
-            mode: mysql:SSL_PREFERRED
+            mode: mysql:SSL_REQUIRED
         },
         connectTimeout: 10
     },

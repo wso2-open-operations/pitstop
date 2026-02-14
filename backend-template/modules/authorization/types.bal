@@ -32,3 +32,8 @@ type AsgardeoJwt record {|
     # Groups of the user
     string[] groups;
 |};
+
+type AppRoles record { 
+    string authorizedRoles;
+};
+
