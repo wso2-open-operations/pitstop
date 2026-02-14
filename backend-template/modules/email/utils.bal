@@ -14,26 +14,19 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/jwt;
+import ballerina/mime;
 
-# User info custom type for Asgardeo token.
-public type CustomJwtPayload record {|
-    # User email
-    string email;
-    # Groups
-    string[] groups;
-|};
-
-# Asgardeo JWT token, if Asgardeo is configured as Choreo Key Manager, this JWT token will be used.
-type AsgardeoJwt record {|
-    *jwt:Payload;
-    # Email address of the user
-    string email;
-    # Groups of the user
-    string[] groups;
-|};
-
-type AppRoles record { 
-    string authorizedRoles;
-};
-
+# Bind values to the email template and encode.
+#
+# + content - Email content  
+# + keyValPairs - Key value pairs
+# + return - Email content
+public isolated function bindKeyValues(string content, map<string> keyValPairs) returns string|error {
+    string bindContent = keyValPairs.entries().reduce(
+        isolated function(string accumulation, [string, string] keyVal) returns string {
+        string:RegExp r = re `<!-- \[${keyVal[0].toUpperAscii()}\] -->`;
+        return r.replaceAll(accumulation, keyVal[1]);
+    },
+    content);
+    return mime:base64Encode(bindContent).ensureType();
+}

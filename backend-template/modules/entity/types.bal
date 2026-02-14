@@ -14,53 +14,52 @@
 // specific language governing permissions and limitations
 // under the License.
 
-# [Configurable] OAuth2 entity application configuration.
-type Oauth2Config record {|
-    # OAuth2 token endpoint
+# [Configurable] HR entity configuration.
+type EmployeeServiceConfig record {|
+    # URL
+    string apiEndpoint;
+    # Token Endpoint
     string tokenUrl;
-    # OAuth2 client ID
+    # Client ID
     string clientId;
-    # OAuth2 client secret
+    # Client Secret
     string clientSecret;
 |};
 
-# Retry config for the graphql client.
-public type GraphQlRetryConfig record {|
-    # Retry count
-    int count = RETRY_COUNT;
-    # Retry interval
-    decimal interval = RETRY_INTERVAL;
-    # Retry backOff factor
-    float backOffFactor = RETRY_BACKOFF_FACTOR;
-    # Retry max interval
-    decimal maxWaitInterval = RETRY_MAX_INTERVAL;
-|};
-
 // Get employee graphQL service Responses.
-# Employee.
+# [HR Entity] Return record for single employee.
 public type Employee record {|
-    # Id of the employee
-    string employeeId;
-    # Email of the employee
-    string workEmail;
-    # First name of the employee
+    # First Name
     string firstName;
-    # Last name of the employee
+    # Last Name
     string lastName;
-    # Job role
-    string jobRole;
-    # Thumbnail of the employee
-    string? employeeThumbnail;
+    # WSO2 Email
+    string workEmail;
+    # Employee Thumbnail URL
+    string? employeeThumbnail = ();
+    # Employee Department
+    string department;
+    # Employee Location
+    string location;
+    # Employee team
+    string? team = ();
 |};
 
-# Employee data.
-type EmployeeData record {
-    # Employee
-    Employee employee;
-};
+# [HR Entity] Inner record for single employee.
+type EmployeeData record {|
+    # Employee Object
+    Employee? employee = ();
+|};
 
-# Employee response.
-type EmployeeResponse record {
-    # Employee data
+# [HR Entity] GraphQL return record for single employee.
+type EmployeeResults record {|
+    # Employee Data Object
     EmployeeData data;
-};
+|};
+
+# List of employee statuses.
+public enum EmployeeStatus {
+    Active,
+    Left,
+    Marked\ leaver
+}

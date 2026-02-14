@@ -16,21 +16,25 @@
 
 import ballerina/graphql;
 
-configurable string hrEntityBaseUrl = ?;
-configurable GraphQlRetryConfig retryConfig = ?;
-configurable Oauth2Config oauthConfig = ?;
+# Employee Entity GraphQl Client.
+configurable EmployeeServiceConfig employeeServiceConfigs = ?;
 
-# Hr Entity -> GraphQL Service Credentials.
-@display {
-    label: "HR Entity GraphQL Service",
-    id: "hris/entity-graphql-service"
+# Initialize Employee Service EndPoint.
+#
+# + return - Employee Service Client.
+public isolated function initializeEmployeeServiceClient() returns graphql:Client|error {
+
+    return check new (employeeServiceConfigs.apiEndpoint, {
+        auth: {
+            tokenUrl: employeeServiceConfigs.tokenUrl,
+            clientId: employeeServiceConfigs.clientId,
+            clientSecret: employeeServiceConfigs.clientSecret
+        },
+        retryConfig: {
+            count: CONSTANT_RETRY_COUNT,
+            interval: CONSTANT_RETRY_INTERVAL,
+            backOffFactor: CONSTANT_RETRY_BACKOFF_FACTOR,
+            maxWaitInterval: CONSTANT_RETRY_MAX_INTERVAL
+        }
+    });
 }
-
-final graphql:Client hrClient = check new (hrEntityBaseUrl, {
-    auth: {
-        ...oauthConfig
-    },
-    retryConfig: {
-        ...retryConfig
-    }
-});

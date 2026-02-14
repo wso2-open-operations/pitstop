@@ -1,4 +1,4 @@
-// Copyright (c) // Copyright (c) 2026 WSO2 LLC. (https://www.wso2.com).  
+// Copyright (c) 2026 WSO2 LLC. (https://www.wso2.com).
 //
 // WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
@@ -14,11 +14,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// Application Constants.
-public const REQUESTED_BY_USER_EMAIL = "requestedByUserEmail";
-public const REQUESTED_BY_USER_ROLES = "requestedByUserRoles";
-public const JWT_ASSERTION = "x-jwt-assertion";
+final string ROUTE_CONTENT_TYPE = "route_content";
 
-// Application Privileges.
-public const EMPLOYEE_PRIVILEGE = 987;
-public const SALES_ADMIN_PRIVILEGE = 537;
+const DEFAULT_CONTENTS_LIMIT = 50;
+const int DEFAULT_CONTENTS_OFFSET = 0;
+const int DEFAULT_TRENDING_CONTENTS_LIMIT = 6;
+const int DEFAULT_TRENDING_CONTENTS_OFFSET = 0;

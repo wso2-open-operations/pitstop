@@ -14,244 +14,2038 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import sample_app.authorization;
-import sample_app.database;
-import sample_app.entity;
+import se_wiki.analytics;
+import se_wiki.authorization;
+import se_wiki.constants;
+import se_wiki.database;
+import se_wiki.email;
+import se_wiki.entity;
+import se_wiki.types;
 
-import ballerina/cache;
 import ballerina/http;
 import ballerina/log;
+import ballerina/time;
 
-public configurable AppConfig appConfig = ?;
+configurable int recentContentsLimit = 6;
+configurable int suggestedContentsLimit = 12;
+configurable int suggestedContentsThreshold = 4;
 
-final cache:Cache cache = new ({
-    capacity: 2000,
-    defaultMaxAge: 1800.0,
-    cleanupInterval: 900.0
-});
+configurable string salesAdmin = ?;
+
+configurable string frontendBaseUrl = ?;
+
+configurable types:AppInfo appInfo = {
+    blockedIframeUrls: []
+};
 
 @display {
-    label: "Sample Application",
-    id: "domain/sample-application"
+    label: "Sales Pitstop",
+    id: "sales/pitstop"
 }
+service http:InterceptableService / on new http:Listener(9090) {
 
-service class ErrorInterceptor {
-    *http:ResponseErrorInterceptor;
+    public function createInterceptors() returns [authorization:JwtInterceptor, ResponseInterceptor] =>
+        [new authorization:JwtInterceptor(), new ResponseInterceptor()];
 
-    remote function interceptResponseError(error err, http:RequestContext ctx) returns http:BadRequest|error {
+    # Get application specific information.
+    #
+    # + return - App information
+    resource function get app\-info() returns types:AppInfo|http:InternalServerError => appInfo;
 
-        // Handle data-binding errors.
-        if err is http:PayloadBindingError {
-            string customError = string `Payload binding failed!`;
-            log:printError(customError, err);
-            return {
+    # Retrieve basic information of a employee.
+    #
+    # + email - Employee work email
+    # + return - Internal Server Error or Employee object
+    resource function get employees/[string email]() returns entity:Employee|http:NotFound|http:InternalServerError {
+        entity:Employee|error employee = entity:getEmployee(email);
+        if employee is error {
+            string customError = "Error while fetching employee details";
+            log:printError(customError, employee);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        return employee;
+    }
+
+    # Get all routePaths from database.
+    #
+    # + routePath - Route path
+    # + return - Route path list or http status code
+    resource function get routes(string? routePath)
+        returns types:RouteResponse[]|types:PageResponse|http:NotFound|http:InternalServerError {
+
+        if routePath is string {
+            types:PageResponse|error? result = database:getPageDetails(routePath);
+
+            if result is error {
+                string customError = "Error while getting page details";
+                log:printError(customError, result);
+                return <http:InternalServerError>{
+                    body: {
+                        message: customError
+                    }
+                };
+            }
+
+            if result is () {
+                return <http:NotFound>{
+                    body: {
+                        message: "Page not found"
+                    }
+                };
+            }
+
+            return result;
+        }
+
+        types:Route[]|error allRoutes = database:getAllRoutesFlat();
+
+        if allRoutes is error {
+            string customError = "Error while getting all routes";
+            log:printError(customError, allRoutes);
+            return <http:InternalServerError>{
                 body: {
                     message: customError
                 }
             };
         }
-        return err;
+
+        return buildRouteTree(allRoutes);
     }
-}
 
-service http:InterceptableService / on new http:Listener(9090) {
-
-    # Request interceptor.
+    # Add a new route path to the database.
     #
-    # + return - authorization:JwtInterceptor, ErrorInterceptor
-    public function createInterceptors() returns http:Interceptor[] =>
-        [new authorization:JwtInterceptor(), new ErrorInterceptor()];
+    # + requestPageData - Route path data
+    # + return - Internal Server Error 
+    resource function post routes(types:RoutePayload requestPageData, http:RequestContext ctx)
+        returns http:Created|http:Forbidden|http:BadRequest|http:InternalServerError {
 
-    # Fetch samples AppConfig.
-    #
-    # + return - AppConfig
-    resource function get app\-config() returns AppConfig => appConfig;
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
 
-    # Fetch user information of the logged in users.
-    #
-    # + ctx - Request object
-    # + return - User info object|Error
-    resource function get user\-info(http:RequestContext ctx) returns UserInfoResponse|http:InternalServerError {
+        string menuItem = requestPageData.label;
+        requestPageData.label = replaceSpacesWithHyphens(requestPageData.label);
 
-        // User information header.
-        authorization:CustomJwtPayload|error userInfo = ctx.getWithType(authorization:HEADER_USER_INFO);
-        if userInfo is error {
+        error? result = database:addRoutePath({...requestPageData, menuItem});
+        if result is error {
+            string customError = "Error while adding route path";
+            log:printError(customError, result);
             return <http:InternalServerError>{
                 body: {
-                    message: "User information header not found!"
+                    message: customError
                 }
-
             };
         }
 
-        // Check cache for logged in user.
-        if cache.hasKey(userInfo.email) {
-            UserInfoResponse|error cachedUserInfo = cache.get(userInfo.email).ensureType();
-            if cachedUserInfo is UserInfoResponse {
-                return cachedUserInfo;
+        return http:CREATED;
+    }
+
+    # Add a new content under a particular router path.
+    #
+    # + contentPayload - ContentPayload data
+    # + return - Success or error responses
+    resource function post contents(types:ContentPayload contentPayload, http:RequestContext ctx)
+        returns http:Created|http:Conflict|http:Forbidden|http:InternalServerError {
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:GET_USER_ID_ERROR, userEmail);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ID_ERROR
+            };
+        }
+        string createdBy = userEmail;
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        boolean|error? isContentExistsResult = database:checkContentExists(
+            contentPayload.contentLink,
+            contentPayload.contentType,
+            contentPayload.sectionId
+        );
+        if isContentExistsResult is error {
+            string customError = "Error while checking content existence";
+            log:printError(customError, isContentExistsResult);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+
+        if isContentExistsResult is boolean && isContentExistsResult {
+            log:printError(constants:CONTENT_ALREADY_EXISTS_ERROR);
+            return http:CONFLICT;
+        }
+
+        error? content = database:addContent(contentPayload, createdBy);
+        if content is error {
+            string customError = "Error while adding a content";
+            log:printError(customError, content);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+
+        return http:CREATED;
+    }
+
+    # Add a new comment for a content.
+    #
+    # + commentPayload - Comment data
+    # + return - Success or error responses
+    resource function post comments(types:CommentPayload commentPayload, http:RequestContext ctx)
+        returns http:Created|http:BadRequest|http:NotFound|http:InternalServerError {
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:USER_INFO_HEADER_NOT_FOUND, userEmail);
+            return <http:InternalServerError>{
+                body: constants:USER_INFO_HEADER_NOT_FOUND
+            };
+        }
+
+        entity:Employee|error employeeInfo = entity:getEmployee(userEmail);
+        if employeeInfo is error {
+            string customError = "Failed to get employee info";
+            log:printError(customError, employeeInfo);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        error? user = database:addUser(employeeInfo);
+        if user is error {
+            string customError = "Error while adding user";
+            log:printError(customError, user);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        int|error? userId = database:getUserIdByUserEmail(userEmail);
+        if userId == () {
+            string customError = "User ID not found";
+            log:printError(customError);
+            return <http:NotFound>{
+                body: customError
+            };
+        }
+        if userId is error {
+            string customError = "Error occurred while fetching user ID";
+            log:printError(customError, userId);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        error? comment = database:addComment({...commentPayload, userId});
+        if comment is error {
+            string customError = "Error while adding comment";
+            log:printError(customError, comment);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+
+        types:ContentResponseById|error? contentResponse = database:getContentDetailById(commentPayload.contentId);
+        if contentResponse is error {
+            string customError = "Error while fetching content";
+            log:printError(customError, contentResponse);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        if contentResponse is () {
+            string notFoundError = "Content not found";
+            log:printError(notFoundError);
+            return <http:NotFound>{
+                body: {
+                    message: notFoundError
+                }
+            };
+        }
+        string emailSubject = string `[Sales-Pitstop][${contentResponse.description}] Comment Activity`;
+
+        string|error content = email:bindKeyValues(email:commentNotificationTemplate,
+            {
+            "EMAIL_BODY": "A new comment has been <b>added</b> to a content on the Sales Pitstop application.",
+            "COMMENT": commentPayload.comment,
+            "USER_EMAIL": userEmail,
+            "CONTENT_NAME": contentResponse.description,
+            "SHAREABLE_LINK": string `${frontendBaseUrl}${contentResponse.routePath}?contentId=${
+                commentPayload.contentId}&sectionId=${contentResponse.sectionId}`
+        });
+        if content is error {
+            string customError = "Error with email template!";
+            log:printError(customError, content);
+            return <http:InternalServerError>{
+                body: {
+                    "message": content.message()
+                }
+            };
+        }
+
+        error? emailError = email:sendEmail(
+            {
+            to: [email:notificationTo],
+            'from: email:notificationFrom,
+            subject: emailSubject,
+            template: content
+        });
+        if emailError is error {
+            log:printError("Error occurred while sending the email !", emailError);
+        }
+
+        return http:CREATED;
+    }
+
+    # Get comments for a particular content.
+    #
+    # + contentId - Content ID
+    # + return - Success or error responses
+    resource function get comments(int contentId) returns types:CommentResponse[]|http:InternalServerError {
+        types:CommentResponse[]|error comments = database:getCommentsByContentId(contentId);
+        if comments is error {
+            string customError = "Error while fetching comments for content";
+            log:printError(customError, comments);
+            return <http:InternalServerError>{
+                body: {
+                    message: customError
+                }
+            };
+        }
+        return comments;
+    }
+
+    # Retrieve all tags from the database.
+    #
+    # + return - Tags or error responses
+    resource function get tags() returns types:TagResponse[]|http:InternalServerError {
+        types:TagResponse[]|error tagResponse = database:getAllTags();
+        if tagResponse is error {
+            string customError = "Error while fetching tag details";
+            log:printError(customError, tagResponse);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        return tagResponse;
+    }
+
+    # Get sections under a given route ID.
+    #
+    # + routePath - Route path to get contents
+    # + limit - Number of sections to retrieve
+    # + offset - Number of sections to offset
+    # + return - Sections or error responses
+    resource function get routes/sections(int 'limit, int offset, string? routePath, http:RequestContext ctx)
+        returns types:SectionResponse[]|http:InternalServerError {
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:GET_USER_ID_ERROR, userEmail);
+            return <http:InternalServerError>{
+                body: {message: constants:GET_USER_ID_ERROR}
+            };
+        }
+
+        types:Section[]|error dbSections = database:getSectionByRoutePath('limit, offset, routePath, userEmail);
+        if dbSections is error {
+            log:printError("Error while fetching sections for route path.", dbSections);
+            return <http:InternalServerError>{
+                body: {message: "Error while fetching sections."}
+            };
+        }
+
+        types:Section[] sections = dbSections.clone();
+
+        if routePath == "/" || routePath == "/home" {
+            types:Section[] specialSectionsInOrder = [];
+
+            //  Recent contents section first
+            specialSectionsInOrder.push({
+                sectionId: RECENT_CONTENT_SECTION_ID,
+                title: RECENT_CONTENTS_TITLE,
+                description: "",
+                sectionType: RECENT_CONTENT_SECTION_TYPE,
+                imageUrl: (),
+                redirectUrl: (),
+                sectionOrder: RECENT_CONTENT_ORDER,
+                customSectionTheme: (),
+                tags: ()
+            });
+
+            if userEmail is string {
+                analytics:VisitSummary|error hasSuggested = analytics:processRecentActivityForUser(userEmail);
+                boolean hasSuggestedContent = hasSuggested is analytics:VisitSummary;
+
+                boolean|error hasSuggestedFromPinned = database:hasSuggestedContentFromPinnedContents(
+                userEmail, suggestedContentsLimit, suggestedContentsThreshold);
+
+                if hasSuggested is error {
+                    string customError = "Error processing recent activity for suggested content.";
+                    log:printError(customError, hasSuggested);
+                    return <http:InternalServerError>{
+                        body: {message: customError}
+                    };
+                }
+                if hasSuggestedFromPinned is error {
+                    string customError = "Error checking suggested content from pinned contents.";
+                    log:printError(customError, hasSuggestedFromPinned);
+                    return <http:InternalServerError>{
+                        body: {message: customError}
+                    };
+                }
+
+                //Suggested For You section secondly
+                if hasSuggestedContent || hasSuggestedFromPinned {
+                    specialSectionsInOrder.push({
+                        sectionId: SUGGESTED_CONTENT_SECTION_ID,
+                        title: SUGGESTED_FOR_YOU_TITLE,
+                        description: "",
+                        sectionType: SUGGESTED_CONTENT_SECTION_TYPE,
+                        imageUrl: (),
+                        redirectUrl: (),
+                        sectionOrder: SUGGESTED_CONTENT_ORDER,
+                        customSectionTheme: (),
+                        tags: ()
+                    });
+                }
+
+                boolean|error hasPinned = database:hasPinnedContent(userEmail);
+                if hasPinned is error {
+                    log:printError("Error checking pinned content.", hasPinned);
+                } else if hasPinned == true {
+                    specialSectionsInOrder.push({
+                        sectionId: PINNED_CONTENT_SECTION_ID,
+                        title: MY_BOARD_TITLE,
+                        description: "",
+                        sectionType: PINNED_CONTENT_SECTION_TYPE,
+                        imageUrl: (),
+                        redirectUrl: (),
+                        sectionOrder: PINNED_CONTENT_ORDER,
+                        customSectionTheme: (),
+                        tags: ()
+                    });
+                }
+            }
+            sections = [...specialSectionsInOrder, ...sections];
+        }
+
+        types:SectionResponse[] sectionResponseData = from var section in sections
+            select {...section, contentData: []};
+
+        return sectionResponseData;
+    }
+
+    # Get contents under a given section ID.
+    #
+    # + sectionId - Section ID to get contents
+    # + limit - Number of contents to retrieve
+    # + offset - Number of contents to offset
+    # + return - Contents or error responses
+    resource function get routes/sections/[int sectionId]/contents(int 'limit, int 'offset, http:RequestContext ctx)
+        returns types:ContentResponse[]|http:NotFound|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        boolean isUser = !authorization:checkPermission([salesAdmin], userGroups);
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:GET_USER_ID_ERROR, userEmail);
+            return <http:InternalServerError>{
+                body: {message: constants:GET_USER_ID_ERROR}
+            };
+        }
+
+        types:ContentResponse[]|error contents = [];
+        if sectionId == RECENT_CONTENT_SECTION_ID {
+            contents = database:getRecentContents(userEmail, recentContentsLimit, 0);
+        } else if sectionId == PINNED_CONTENT_SECTION_ID {
+            contents = database:getPinnedContents(userEmail, 'limit, 'offset);
+        } else if sectionId == SUGGESTED_CONTENT_SECTION_ID {
+            analytics:VisitSummary|error visitSummary = trap analytics:processRecentActivityForUser(userEmail);
+            if visitSummary is error {
+                log:printWarn("Analytics unavailable. Using fallback suggestions", userEmail = userEmail);
+                contents = database:getSuggestionsFromPinnedContents(userEmail, suggestedContentsLimit, 0);
+            } else {
+                log:printDebug("Analytics data loaded for suggested section", userEmail = userEmail);
+                contents = database:getSuggestionsFromRecentActivity(userEmail, visitSummary.searchedKeywords,
+                    visitSummary.viewedContentNames, suggestedContentsLimit, 0);
+            }
+        } else {
+            boolean|error? exists = database:checkSectionExists((), (), sectionId);
+            if exists is error {
+                string customError = "Error while checking section existence.";
+                log:printError(customError, exists);
+                return <http:InternalServerError>{
+                    body: {message: customError}
+                };
+            }
+            if exists is boolean && !exists {
+                return <http:NotFound>{
+                    body: {message: "Section not found."}
+                };
+            }
+            contents = database:getContentsBySectionId(isUser, sectionId, userEmail, 'limit, 'offset);
+        }
+
+        if contents is error {
+            string customError = "Error while fetching contents for section ID: " + sectionId.toString();
+            log:printError(customError, contents);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+
+        return contents;
+    }
+
+    # Get pinned content for the current user.
+    #
+    # + limit - Number of contents to retrieve
+    # + offset - Number of contents to offset
+    # + return - Pinned contents or error responses
+    resource function get contents/pinned(int 'limit, int 'offset, http:RequestContext ctx)
+        returns types:ContentResponse[]|http:BadRequest|http:InternalServerError {
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:GET_USER_ID_ERROR, userEmail);
+            return <http:InternalServerError>{
+                body: {message: constants:GET_USER_ID_ERROR}
+            };
+        }
+
+        types:ContentResponse[]|error contentResponse =
+        database:getPinnedContents(userEmail, 'limit, 'offset);
+
+        if contentResponse is error {
+            string customError = "Error while fetching pinned contents.";
+            log:printError(customError, contentResponse);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+
+        return contentResponse;
+    }
+
+    # Delete a content.
+    #
+    # + contentId - Content ID
+    # + return - Success or error responses
+    resource function delete contents/[int contentId](http:RequestContext ctx)
+        returns http:Ok|http:Forbidden|http:NotFound|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: {message: constants:GET_USER_ROLE_ERROR}
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return <http:Forbidden>{
+                body: {message: constants:UNAUTHORIZED_ACCESS_ERROR}
+            };
+        }
+
+        int|error? result = database:deleteContentById(contentId);
+        if result is error || result == () {
+            string customError = "Error while deleting content!";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+        if result == 0 {
+            return http:NOT_FOUND;
+        }
+
+        return http:OK;
+    }
+
+    # Add like to a component.
+    #
+    # + contentId - Content ID
+    # + return - Success or error responses
+    resource function post contents/[int contentId]/likes(http:RequestContext ctx)
+        returns http:Created|http:NotFound|http:Conflict|http:InternalServerError {
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:USER_INFO_HEADER_NOT_FOUND, userEmail);
+            return <http:InternalServerError>{
+                body: {message: constants:USER_INFO_HEADER_NOT_FOUND}
+            };
+        }
+
+        entity:Employee|error employee = entity:getEmployee(userEmail);
+        if employee is error {
+            string customError = "Failed to get employee info";
+            log:printError(customError, employee);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+
+        error? addUserErr = database:addUser(employee);
+        if addUserErr is error {
+            string customError = "Failed to add user";
+            log:printError(customError, addUserErr);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+
+        int|error? userId = database:getUserIdByUserEmail(userEmail);
+        if userId == () {
+            string customError = "User ID not found";
+            log:printError(customError);
+            return <http:NotFound>{
+                body: customError
+            };
+        }
+        if userId is error {
+            string customErr = "Error occurred while fetching user ID";
+            log:printError(customErr, userId);
+            return <http:InternalServerError>{
+                body: customErr
+            };
+        }
+
+        error? result = database:addLike({contentId, userId});
+        if result is error {
+            string customErr = "Failed to add like";
+            log:printError(customErr, result);
+            return <http:Conflict>{
+                body: customErr
+            };
+        }
+
+        return http:CREATED;
+    }
+
+    # Pin a content item.
+    #
+    # + pinPayload - Pin content payload containing contentId
+    # + return - Success or error responses
+    resource function post users/me/pinned\-contents(types:PinContentPayload pinPayload, http:RequestContext ctx)
+        returns http:Created|http:NotFound|http:InternalServerError {
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:USER_INFO_HEADER_NOT_FOUND, userEmail);
+            return <http:InternalServerError>{
+                body: constants:USER_INFO_HEADER_NOT_FOUND
+            };
+        }
+
+        entity:Employee|error employee = entity:getEmployee(userEmail);
+        if employee is error {
+            string customErr = "Failed to get employee info";
+            log:printError(customErr, employee);
+            return <http:InternalServerError>{
+                body: customErr
+            };
+        }
+
+        error? result = database:addUser(employee);
+        if result is error {
+            string customErr = "Failed to add user";
+            log:printError(customErr, result);
+            return <http:InternalServerError>{
+                body: customErr
+            };
+        }
+
+        int|error? pinContentResult = database:pinContents({contentId: pinPayload.contentId, userEmail: userEmail});
+        if pinContentResult is error || pinContentResult == () {
+            string customPinErr = "Failed to pin content";
+            log:printError(customPinErr, pinContentResult);
+            return <http:InternalServerError>{
+                body: customPinErr
+            };
+        }
+        if pinContentResult == 0 {
+            return http:NOT_FOUND;
+        }
+        return http:CREATED;
+    }
+
+    # Unpin a content item.
+    #
+    # + contentId - Content ID
+    # + return - Success or error responses
+    resource function delete users/me/pinned\-contents/[int contentId](http:RequestContext ctx)
+        returns http:Ok|http:InternalServerError {
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:USER_INFO_HEADER_NOT_FOUND, userEmail);
+            return <http:InternalServerError>{
+                body: constants:USER_INFO_HEADER_NOT_FOUND
+            };
+        }
+
+        error? unpinResult = database:unpinContents({contentId, userEmail: userEmail});
+        if unpinResult is error {
+            string customUnpinErr = "Failed to unpin content";
+            log:printError(customUnpinErr, unpinResult);
+            return <http:InternalServerError>{
+                body: customUnpinErr
+            };
+        }
+        return http:OK;
+    }
+
+    # Delete a route.
+    #
+    # + routeId - Route ID
+    # + return - Success or error responses
+    resource function delete routes/[int routeId](http:RequestContext ctx)
+        returns http:Ok|http:NotFound|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        // [Start] Custom Resource level authorization.
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        int|error? route = database:deleteRoute(routeId);
+        if route is error || route == () {
+            string customError = "Error while deleting route";
+            log:printError(customError, route);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        if route == 0 {
+            return http:NOT_FOUND;
+        }
+        return http:OK;
+    }
+
+    # Update a route.
+    #
+    # + updateRoutePayload - New route details
+    # + return - Success or error responses
+    resource function patch routes(http:RequestContext ctx, types:UpdateRoutePayload updateRoutePayload)
+        returns http:Ok|http:Forbidden|http:NotFound|http:BadRequest|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        string? thumbnail = updateRoutePayload.thumbnail;
+        thumbnail = thumbnail == "" ? () : thumbnail;
+        if thumbnail is string && !constants:URL.isFullMatch(thumbnail) {
+            log:printError(constants:INVALID_URL_ERROR, thumbnail = thumbnail);
+            return http:BAD_REQUEST;
+        }
+        int|error? route = database:updateRoute(updateRoutePayload);
+        if route is error || route is () {
+            string customError = "Error while updating route";
+            log:printError(customError, route);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        if route == 0 {
+            return http:NOT_FOUND;
+        }
+        return http:OK;
+    }
+
+    # Update a content.
+    #
+    # + updateContentPayload - New content details
+    # + return - Success or error responses
+    resource function patch contents/[int contentId](http:RequestContext ctx,
+            types:UpdateContentPayload updateContentPayload)
+        returns http:Ok|http:Forbidden|http:NotFound|http:BadRequest|http:InternalServerError {
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:USER_INFO_HEADER_NOT_FOUND, userEmail);
+            return <http:InternalServerError>{
+                body: constants:USER_INFO_HEADER_NOT_FOUND
+            };
+        }
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        string? contentLink = updateContentPayload.contentLink;
+        contentLink = contentLink == "" ? () : contentLink;
+        if contentLink is string && !constants:URL.isFullMatch(contentLink) {
+            log:printError(constants:INVALID_URL_ERROR, contentLink = contentLink);
+            return http:BAD_REQUEST;
+        }
+
+        int|error? content = database:updateContent(contentId, updateContentPayload, userEmail);
+        if content is error || content is () {
+            string customError = "Error while updating content";
+            log:printError(customError, content);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        if content == 0 {
+            return http:NOT_FOUND;
+        }
+        return http:OK;
+    }
+
+    # Add a new section under a particular router path.
+    #
+    # + sectionPayload - Section payload data
+    # + return - Success or error responses
+    resource function post sections(types:SectionPayload sectionPayload, http:RequestContext ctx)
+        returns http:Created|http:NotFound|http:Conflict|http:BadRequest|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        // [Start] Custom Resource level authorization.
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            return http:FORBIDDEN;
+        }
+        // [End] Custom Resource level authorization.
+
+        if sectionPayload.sectionType == "image" && sectionPayload.imageUrl == () {
+            log:printError(constants:IMAGE_LINK_REQUIRED_ERROR);
+            return http:BAD_REQUEST;
+        }
+
+        boolean|error? isSectionExists = database:checkSectionExists(sectionPayload.title, sectionPayload.routeId);
+        if isSectionExists is error {
+            string customError = "Error while checking section existence";
+            log:printError(customError, isSectionExists);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        if isSectionExists is boolean && isSectionExists {
+            log:printError(constants:SECTION_ALREADY_EXISTS_ERROR);
+            return http:CONFLICT;
+        }
+
+        error? section = database:addSection(sectionPayload);
+        if section is error {
+            string customError = "Error while adding section";
+            log:printError(customError, section);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        return http:CREATED;
+    }
+
+    # Update a section.
+    #
+    # + updatedSectionPayload - New section details
+    # + return - Success or error respon
+    resource function patch sections(http:RequestContext ctx, types:UpdateSectionPayload updatedSectionPayload)
+        returns http:Ok|http:Forbidden|http:NotFound|http:BadRequest|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        if updatedSectionPayload.sectionType == "image" && updatedSectionPayload.imageUrl == () {
+            log:printError(constants:IMAGE_LINK_REQUIRED_ERROR);
+            return http:BAD_REQUEST;
+        }
+
+        string? imageUrl = updatedSectionPayload.imageUrl;
+        imageUrl = imageUrl == "" ? () : imageUrl;
+        if imageUrl is string && !constants:URL.isFullMatch(imageUrl) {
+            log:printError(constants:INVALID_URL_ERROR, imageUrl = imageUrl);
+            return http:BAD_REQUEST;
+        }
+
+        string? redirectUrl = updatedSectionPayload.redirectUrl;
+        redirectUrl = redirectUrl == "" ? () : redirectUrl;
+        if redirectUrl is string && redirectUrl != "" {
+            boolean isMatch = constants:URL.isFullMatch(redirectUrl);
+            if !isMatch {
+                log:printError(constants:INVALID_URL_ERROR, redirectUrl = redirectUrl);
+                return http:BAD_REQUEST;
             }
         }
 
-        // Fetch the user information from the entity service.
-        // entity:Employee|error loggedInUser = entity:fetchEmployeesBasicInfo(userInfo.email);
-        // if loggedInUser is error {
-        //     string customError = string `Error occurred while retrieving user data: ${userInfo.email}!`;
-        //     log:printError(customError, loggedInUser);
-        //     return <http:InternalServerError>{
-        //         body: {
-        //             message: customError
-        //         }
-        //     };
-        // }
-
-        // // Fetch the user's privileges based on the roles.
-        // int[] privileges = [];
-        // if authorization:checkPermissions([authorization:authorizedRoles.employeeRole], userInfo.groups) {
-        //     privileges.push(authorization:EMPLOYEE_ROLE_PRIVILEGE);
-        // }
-        // if authorization:checkPermissions([authorization:authorizedRoles.headPeopleOperationsRole], userInfo.groups) {
-        //     privileges.push(authorization:HEAD_PEOPLE_OPERATIONS_PRIVILEGE);
-        // }
-
-        entity:Employee loggedInUser = {
-            firstName: "Kaveesha",
-            lastName: "Liyanarachchi",
-            employeeId: "E001",
-            employeeThumbnail: (),
-            workEmail: "kaveeshal@wso2.com",
-            jobRole: "Intern"
-        };
-
-        int[] privileges = [];
-
-        privileges.push(authorization:EMPLOYEE_ROLE_PRIVILEGE);
-        privileges.push(authorization:HEAD_PEOPLE_OPERATIONS_PRIVILEGE);
-
-        UserInfoResponse userInfoResponse = {...loggedInUser, privileges};
-
-        error? cacheError = cache.put(userInfo.email, userInfoResponse);
-        if cacheError is error {
-            log:printError("An error occurred while writing user info to the cache", cacheError);
+        int|error? section = database:updateSection(updatedSectionPayload);
+        if section is error || section is () {
+            string customError = "Error while updating section";
+            log:printError(customError, section);
+            return <http:InternalServerError>{
+                body: customError
+            };
         }
-        return userInfoResponse;
+        if section == 0 {
+            return http:NOT_FOUND;
+        }
+        return http:OK;
     }
 
-    # Fetch all samples from the database.
+    # Delete a section.
     #
-    # + name - Name to filter
-    # + 'limit - Limit of the data
-    # + offset - Offset of the data
-    # + return - All samples|Error
-    isolated resource function get collections(http:RequestContext ctx, string? name, int? 'limit, int? offset)
-        returns SampleCollection|http:Forbidden|http:BadRequest|http:InternalServerError {
+    # + sectionId - Section ID
+    # + return - Success or error responses
+    resource function delete sections/[int sectionId](http:RequestContext ctx)
+        returns http:Ok|http:BadRequest|http:NotFound|http:Forbidden|http:InternalServerError {
 
-        // "requestedBy" is the email of the user access this resource.
-        // interceptor set this value after validating the jwt.
-        authorization:CustomJwtPayload|error userInfo = ctx.getWithType(authorization:HEADER_USER_INFO);
-        if userInfo is error {
-            return <http:BadRequest>{
-                body: {
-                    message: "User information header not found!"
-                }
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
             };
         }
 
         // [Start] Custom Resource level authorization.
-        if !authorization:checkPermissions([authorization:authorizedRoles.employeeRole],
-                userInfo.groups) {
-            return <http:Forbidden>{
-                body: {
-                    message: "Insufficient privileges!"
-                }
-            };
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
         }
         // [End] Custom Resource level authorization.
 
-        database:SampleCollection[]|error collections = database:fetchSampleCollections(name, 'limit, offset);
-        if collections is error {
-            string customError = string `Error occurred while retrieving the sample collections!`;
-            log:printError(customError, collections);
+        int|error? sectionById = database:deleteSectionById(sectionId);
+        if sectionById is error || sectionById == () {
+            string customError = "Error while deleting section.";
+            log:printError(customError, sectionById);
             return <http:InternalServerError>{
-                body: {
-                    message: customError
-                }
+                body: customError
             };
         }
-
-        return {
-            count: collections.length(),
-            collections: collections
-        };
+        if sectionById == 0 {
+            return http:NOT_FOUND;
+        }
+        return http:OK;
     }
 
-    # Insert collections.
+    # Search contents.
     #
-    # + collection - New collection
-    # + return - Created|Forbidden|BadRequest|Error
-    resource function post collections(http:RequestContext ctx, database:AddSampleCollection collection)
-        returns http:Created|http:Forbidden|http:BadRequest|http:InternalServerError {
+    # + userInput - User input
+    # + return - Success or error responses
+    resource function post search\-content(http:RequestContext ctx, string userInput)
+        returns types:ContentResponse[]|http:InternalServerError {
 
-        // "requestedBy" is the email of the user access this resource.
-        // interceptor set this value after validating the jwt.
-        authorization:CustomJwtPayload|error userInfo = ctx.getWithType(authorization:HEADER_USER_INFO);
-        if userInfo is error {
-            return <http:BadRequest>{
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        string customEmailError = "Error while fetching user email.";
+        if userEmail is error {
+            log:printError(customEmailError, userEmail);
+            return <http:InternalServerError>{
+                body: customEmailError
+            };
+        }
+
+        types:ContentResponse[]|error contentResponse = database:getContentsByText(userInput, userEmail);
+        if contentResponse is error {
+            log:printError(constants:GET_CONTENTS_BY_TEXT_ERROR, contentResponse);
+            return <http:InternalServerError>{
+                body: "Error while searching contents."
+            };
+        }
+        return contentResponse;
+    }
+
+    # Search contents basic info.
+    #
+    # + return - Success or error responses
+    resource function get search\-content/basic(http:RequestContext ctx)
+        returns types:ContentReport[]|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        types:ContentReport[]|error result = database:getContentDetails();
+        if result is error {
+            string customError = "Error while fetching basic content search info";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: customError
+            };
+        }
+        return result;
+    }
+
+    # Filter contents by tags.
+    #
+    # + inputTags - Input tags
+    # + return - Success or error responses
+    resource function post filter\-content(http:RequestContext ctx, string[] inputTags)
+        returns types:ContentResponse[]|http:InternalServerError {
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        string customEmailError = "Error while fetching user email.";
+        if userEmail is error {
+            log:printError(customEmailError, userEmail);
+            return <http:InternalServerError>{
+                body: customEmailError
+            };
+        }
+
+        types:ContentResponse[]|error contentResponse = database:getContentsByTags(inputTags, userEmail);
+        if contentResponse is error {
+            log:printError(constants:GET_CONTENTS_BY_TAGS_ERROR, contentResponse);
+            return <http:InternalServerError>{
+                body: "Error while filtering content by tags."
+            };
+        }
+        return contentResponse;
+    }
+
+    # Reorder contents within a section.
+    #
+    # + reorderContentsPayload - Reorder content payload
+    # + return - Success or error responses
+    resource function patch contents/reorder(http:RequestContext ctx,
+            types:ReorderContentPayload reorderContentsPayload)
+        returns http:Ok|http:BadRequest|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        if reorderContentsPayload.reorderContents.length() == 0 {
+            return http:BAD_REQUEST;
+        }
+
+        error? result = database:reorderContents(reorderContentsPayload);
+        if result is error {
+            string customError = "Failed to reorder contents";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
                 body: {
-                    message: "User information header not found!"
+                    "message": customError
                 }
             };
         }
 
-        // [Start] Custom Resource level authorization.
-        if !authorization:checkPermissions([authorization:authorizedRoles.headPeopleOperationsRole],
-                userInfo.groups) {
+        return http:OK;
+    }
 
-            return <http:Forbidden>{
+    # Reorder sections.
+    #
+    # + reorderSectionsPayload - Reorder section payload
+    # + return - Success or error responses
+    resource function patch sections/reorder(http:RequestContext ctx,
+            types:ReorderSectionPayload reorderSectionsPayload)
+        returns http:Ok|http:BadRequest|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        if reorderSectionsPayload.reorderSections.length() == 0 {
+            return http:BAD_REQUEST;
+        }
+
+        error? result = database:reorderSections(reorderSectionsPayload);
+        if result is error {
+            string customError = "Failed to reorder sections";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
                 body: {
-                    message: "Insufficient privileges!"
+                    "message": customError
                 }
             };
         }
-        // [End] Custom Resource level authorization.
 
-        // Insert collection.
-        int|error collectionId = database:addSampleCollection(collection, userInfo.email);
-        if collectionId is error {
-            string customError = string `Error occurred while adding sample collection!`;
-            log:printError(customError, collectionId);
+        return http:OK;
+    }
+
+    # Reorder routes.
+    #
+    # + reorderRoutesPayload - Reorder routes payload
+    # + return - Success or error responses
+    resource function patch routes/reorder(http:RequestContext ctx, types:ReorderRoutesPayload reorderRoutesPayload)
+        returns http:Ok|http:BadRequest|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        if reorderRoutesPayload.reorderRoutes.length() == 0 {
+            return http:BAD_REQUEST;
+        }
+
+        error? result = database:reorderRoutes(reorderRoutesPayload);
+        if result is error {
+            string customError = "Failed to reorder routes";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {
+                    "message": customError
+                }
+            };
+        }
+
+        return http:OK;
+    }
+
+    # Add a new tag.
+    #
+    # + tagPayload - Tag details
+    # + return - Success or error responses
+    resource function post tags(http:RequestContext ctx, types:TagPayload tagPayload)
+        returns http:Created|http:BadRequest|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        error? result = database:addTag(tagPayload);
+        if result is error {
+            string customError = "Error while adding tag!";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {
+                    "message": customError
+                }
+            };
+        }
+        return http:CREATED;
+    }
+
+    # Delete a tag.
+    #
+    # + tagName - Tag details
+    # + return - Success or error responses
+    resource function delete tags/[string tagName](http:RequestContext ctx)
+        returns http:Ok|http:NotFound|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        int|error? result = database:deleteTag(tagName);
+        if result is error || result == () {
+            string customError = "Error while deleting tag!";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {
+                    "message": customError
+                }
+            };
+        }
+        if result == 0 {
+            return http:NOT_FOUND;
+        }
+        return http:OK;
+    }
+
+    # Get all route content items where route id is not null.
+    #
+    # + return - Array of content items or error
+    resource function get route/contents(http:RequestContext ctx)
+        returns types:RouteContentItem[]|http:InternalServerError {
+
+        types:RouteContentItem[]|error result = database:getRouteContentDetails();
+
+        if result is error {
+            string customError = "Error while retrieving all route content items!";
+            log:printError(customError, result);
             return <http:InternalServerError>{
                 body: {
                     message: customError
                 }
             };
         }
+        return result;
+    }
 
-        database:SampleCollection|error? addedSampleCollection = database:fetchSampleCollection(collectionId);
+    # Add a new content under a particular route path.
+    #
+    # + contentPayload - Routew  Content details
+    # + return - Success or error responses
+    resource function post route/contents(http:RequestContext ctx, types:RouteContentPayload contentPayload)
+        returns http:Created|http:Forbidden|http:InternalServerError {
 
-        // Handle : database read error.
-        if addedSampleCollection is error {
-            string customError = string `Error occurred while retrieving the added sample collection!`;
-            log:printError(customError, addedSampleCollection);
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        error? result = database:addRouteContent(contentPayload);
+        if result is error {
+            string customError = "Error while adding route content!";
+            log:printError(customError, result);
             return <http:InternalServerError>{
                 body: {
-                    message: customError
+                    "message": customError
+                }
+            };
+        }
+        return http:CREATED;
+    }
+
+    # Update content under a route.
+    #
+    # + contentPayload - Update content details
+    # + return - Success or error responses
+    resource function patch route/contents(http:RequestContext ctx, types:UpdateRouteContentPayload contentPayload)
+        returns http:Ok|http:NotFound|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        int|error? result = database:updateRouteContent(contentPayload);
+        if result is error || result is () {
+            string customError = "Error while updating route content!";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {
+                    "message": customError
+                }
+            };
+        }
+        if result == 0 {
+            return http:NOT_FOUND;
+        }
+        return http:OK;
+    }
+
+    # Delete a content in a route.
+    #
+    # + contentId - Content ID
+    # + return - Success or error responses
+    resource function delete route/contents/[int contentId](http:RequestContext ctx)
+        returns http:Ok|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        error? result = database:DeleteRouteContent(contentId);
+        if result is error {
+            string customError = "Error while deleting route content!";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {
+                    "message": customError
+                }
+            };
+        }
+        return http:OK;
+    }
+
+    # Reparent one or more routes.
+    #
+    # + payload - Reparenting info
+    # + return - Success or error responses
+    resource function patch routes/reparent(http:RequestContext ctx, types:ReParentRoutesPayload payload)
+        returns http:Ok|http:BadRequest|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        error? result = database:reparentRoutes(payload);
+        if result is error {
+            string customError = "Error while reparenting routes.";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {
+                    "message": customError
+                }
+            };
+        }
+        return http:OK;
+    }
+
+    # Updates the text of an testimonial comment in the database.
+    #
+    # + commentId - Comment ID
+    # + commentPayload - Comment payload data
+    # + return - Success or error responses
+    resource function patch comments/[int commentId](http:RequestContext ctx, types:UpdateCommentPayload commentPayload)
+        returns http:Ok|http:Forbidden|http:NotFound|http:BadRequest|http:InternalServerError {
+
+        if commentPayload.commentId != commentId {
+            log:printError(constants:COMMENT_ID_MISMATCH_ERROR, 
+                pathCommentId = commentId, payloadCommentId = commentPayload.commentId);
+            return http:BAD_REQUEST;
+        }
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        string customEmailError = "Error while fetching user email.";
+        if userEmail is error {
+            log:printError(customEmailError, userEmail);
+            return <http:InternalServerError>{
+                body: customEmailError
+            };
+        }
+
+        boolean isAdmin = authorization:checkPermission([salesAdmin], userGroups);
+
+        types:CommentData|error? data = database:getCommentData(commentId, userEmail);
+        string customError = "Error while fetching comment data";
+        if data is error {
+            log:printError(customError, data);
+            return <http:NotFound>{
+                body: {"message": customError}
+            };
+        }
+
+        if data is () {
+            string notFoundError = "Comment not found or not owned by user.";
+            return <http:NotFound>{
+                body: {"message": notFoundError}
+            };
+        }
+        types:CommentData commentData = data;
+
+        if !isAdmin {
+            time:Utc now = time:utcNow();
+            decimal ageSec = time:utcDiffSeconds(now, commentData.createdOn);
+            if ageSec > 3600d {
+                log:printError("Update window expired (>1h)", commentId = commentId, userEmail = userEmail);
+                return http:FORBIDDEN;
+            }
+        }
+
+        int|error? updateErr = database:updateComment(commentPayload, userEmail);
+        if updateErr is error || updateErr is () {
+            string customUpdateError = "Error while updating comment";
+            log:printError(customUpdateError, updateErr);
+            return <http:InternalServerError>{
+                body: {"message": customUpdateError}
+            };
+        }
+        if updateErr == 0 {
+            return http:NOT_FOUND;
+        }
+
+        types:ContentResponseById|error? contentResponse = database:getContentDetailById(commentPayload.contentId);
+        if contentResponse is error {
+            string customContentResponseError = "Error while fetching content details";
+            log:printError(customContentResponseError, contentResponse);
+            return <http:InternalServerError>{
+                body: {"message": customContentResponseError}
+            };
+        }
+        if contentResponse is () {
+            string notFoundError = "Content not found.";
+            log:printError(notFoundError);
+            return <http:NotFound>{
+                body: {
+                    message: notFoundError
                 }
             };
         }
 
-        // Handle : no record error.
-        if addedSampleCollection is () {
-            string customError = string `Added sample collection is no longer available to access!`;
-            log:printError(customError);
+        string emailSubject = string `[Sales-Pitstop][${contentResponse.description}] Comment Activity`;
+
+        string|error content = email:bindKeyValues(
+            email:commentNotificationTemplate,
+            {
+            "EMAIL_BODY"
+                : "An <b>update</b> has been made to a comment for a content within the Sales Pitstop application.",
+            "COMMENT": commentPayload.comment,
+            "USER_EMAIL": userEmail,
+            "CONTENT_NAME": contentResponse.description,
+            "SHAREABLE_LINK": string `${frontendBaseUrl}${contentResponse.routePath}?contentId=${
+                commentPayload.contentId}&sectionId=${contentResponse.sectionId}`
+        }
+        );
+        string customContentError = "Error with email template!";
+        if content is error {
+            log:printError(customContentError, content);
+            return <http:InternalServerError>{
+                body: {"message": customContentError}
+            };
+        }
+
+        error? emailErr = email:sendEmail(
+            {
+            to: [email:notificationTo],
+            'from: email:notificationFrom,
+            subject: emailSubject,
+            template: content
+        });
+        if emailErr is error {
+            log:printError("Error occurred while sending the email!", emailErr);
+        }
+
+        return http:OK;
+    }
+
+    # Deletes a comment from the database.
+    #
+    # + commentId - Comment ID
+    # + commentPayload - Comment payload data
+    # + return - Success or error responses
+    resource function delete comments/[int commentId](http:RequestContext ctx,
+            types:UpdateCommentPayload commentPayload)
+        returns http:Ok|http:BadRequest|http:NotFound|http:Forbidden|http:InternalServerError {
+
+        if commentPayload.commentId != commentId {
+            log:printError(constants:COMMENT_ID_MISMATCH_ERROR, 
+                pathCommentId = commentId, payloadCommentId = commentPayload.commentId);
+            return http:BAD_REQUEST;
+        }
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        string customEmailError = "Error while fetching user email.";
+        if userEmail is error {
+            log:printError(customEmailError, userEmail);
+            return <http:InternalServerError>{
+                body: customEmailError
+            };
+        }
+
+        types:CommentData|error? commentDataResult = database:getCommentData(commentId, userEmail);
+        string customCommentDataError = "Error while fetching comment data";
+        if commentDataResult is error {
+            log:printError(customCommentDataError, commentDataResult);
+            return <http:InternalServerError>{
+                body: {"message": customCommentDataError}
+            };
+        }
+
+        boolean isAdmin = authorization:checkPermission([salesAdmin], userGroups);
+
+        if commentDataResult is () {
+            if !isAdmin {
+                log:printError("Unauthorized: not owner or comment not found", commentId = commentId,
+                    userEmail = userEmail);
+                return http:FORBIDDEN;
+            }
+        } else {
+            types:CommentData commentData = <types:CommentData>commentDataResult;
+            if !isAdmin {
+                time:Utc now = time:utcNow();
+                decimal ageSeconds = time:utcDiffSeconds(now, commentData.createdOn);
+                if ageSeconds > 3600d {
+                    log:printError("Delete window expired (over 1h)", commentId = commentId, userEmail = userEmail);
+                    return http:FORBIDDEN;
+                }
+            }
+        }
+
+        int|error? result = database:deleteComment(commentPayload, userEmail);
+
+        if result is error || result == () {
+            string customDeleteError = "Error while deleting comment";
+            log:printError(customDeleteError, result);
+            return <http:InternalServerError>{
+                body: {"message": customDeleteError}
+            };
+        }
+        if result == 0 {
+            return http:NOT_FOUND;
+        }
+
+        types:ContentResponseById|error? contentResponse = database:getContentDetailById(commentPayload.contentId);
+        string customContentError = "Error while fetching content details";
+        if contentResponse is error {
+            log:printError(customContentError, contentResponse);
             return <http:InternalServerError>{
                 body: {
-                    message: customError
+                    "message": customContentError
+                }
+            };
+        }
+        if contentResponse is () {
+            string notFoundError = "Content not found.";
+            log:printError(notFoundError);
+            return <http:NotFound>{
+                body: {
+                    message: notFoundError
                 }
             };
         }
 
-        return <http:Created>{
-            body: addedSampleCollection
-        };
+        string emailSubject = string `[Sales-Pitstop][${contentResponse.description}] Comment Activity`;
+
+        string|error content = email:bindKeyValues(email:commentNotificationTemplate,
+            {
+            "EMAIL_BODY": "This comment has been <b>deleted</b> from a content in the Sales Pitstop application.",
+            "COMMENT": commentPayload.comment,
+            "USER_EMAIL": userEmail,
+            "CONTENT_NAME": contentResponse.description,
+            "SHAREABLE_LINK": string `${frontendBaseUrl}${contentResponse.routePath}?contentId=${
+                commentPayload.contentId}&sectionId=${contentResponse.sectionId}`
+        });
+        if content is error {
+            string customError = "Error with email template!";
+            log:printError(customError, content);
+            return <http:InternalServerError>{
+                body: {
+                    "message": customError
+                }
+            };
+        }
+        error? emailError = email:sendEmail(
+            {
+            to: [email:notificationTo],
+            'from: email:notificationFrom,
+            subject: emailSubject,
+            template: content
+        });
+        if emailError is error {
+            log:printError("Error occurred while sending the email !", emailError);
+        }
+
+        return http:OK;
+    }
+
+    # Updates the visibility of a specific route.
+    #
+    # + routeId - The ID of the route to update
+    # + payload - The request payload containing the updated route data
+    # + return - Success or error responses
+    resource function patch routes/[string routeId](http:RequestContext ctx, types:Routes payload)
+        returns http:Ok|http:BadRequest|http:NotFound|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{
+                body: constants:GET_USER_ROLE_ERROR
+            };
+        }
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        int|error routeIdInt = int:fromString(routeId);
+        if routeIdInt is error {
+            log:printError("Invalid routeId, must be an integer", routeId = routeId);
+            return http:BAD_REQUEST;
+        }
+
+        int|error? result = database:updateRouteVisibility(routeIdInt, payload);
+        if result is error || result == () {
+            string customError = "Error while updating route visibility!";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+        if result == 0 {
+            return http:NOT_FOUND;
+        }
+
+        return http:OK;
+    }
+
+    # Create a new custom button.
+    #
+    # + ctx - Request context
+    # + button - Custom button payload
+    # + return - Success or error responses
+    resource function post custom\-buttons(http:RequestContext ctx, database:CustomButtonCreatePayload button)
+        returns http:Created|http:BadRequest|http:Forbidden|http:InternalServerError {
+
+        string customerErr = "Failed to get user roles";
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(customerErr, userGroups);
+            return <http:InternalServerError>{
+                body: customerErr
+            };
+        }
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        if button.contentId == "" || button.action == "" || button.actionValue == ()
+        || button.actionValue == "" {
+            log:printError(constants:EMPTY_FIELDS_ERROR);
+            return http:BAD_REQUEST;
+        }
+
+        int|error result = database:addCustomButton(button);
+        if result is error {
+            string customError = "Error while adding custom button!";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+
+        return http:CREATED;
+    }
+
+    # Get all custom buttons for a content.
+    #
+    # + ctx - Request context
+    # + contentId - Content ID
+    # + return - Custom buttons or error responses
+    resource function get contents/[string contentId]/custom\-buttons(http:RequestContext ctx)
+        returns database:CustomButton[]|http:InternalServerError {
+
+        database:CustomButton[]|error result = database:getCustomButtons(contentId);
+        if result is error {
+            string customError = "Error while fetching custom buttons!";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+
+        return result;
+    }
+
+    # Update a custom button.
+    #
+    # + ctx - Request context
+    # + buttonId - Button ID
+    # + return - Success or error responses
+    resource function patch contents/[int buttonId]/custom\-buttons(http:RequestContext ctx,
+            database:CustomButtonUpdatePayload button)
+        returns http:Ok|http:BadRequest|http:NotFound|http:Conflict|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            string customError = "Failed to get user roles";
+            log:printError(customError, userGroups);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        database:CustomButton|error? customButton = database:getCustomButton(buttonId);
+        if customButton is error {
+            string customError = "Error while fetching the custom button!";
+            log:printError(customError, customButton);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+
+        if customButton is () {
+            string notFoundError = "Custom button not found!";
+            log:printError(notFoundError);
+            return <http:NotFound>{
+                body: {
+                    message: notFoundError
+                }
+            };
+        }
+
+        int|error? updateErr = database:updateCustomButton(buttonId, button);
+        if updateErr is error || updateErr is () {
+            string updateError = "Error while updating the custom button!";
+            log:printError(updateError, updateErr);
+            return <http:InternalServerError>{
+                body: {message: updateError}
+            };
+        }
+        if updateErr == 0 {
+            return http:NOT_FOUND;
+        }
+
+        return http:OK;
+    }
+
+    # Delete a custom button.
+    #
+    # + ctx - Request context
+    # + buttonId - Button ID
+    # + return - Success or error responses
+    resource function delete custom\-buttons/[int buttonId](http:RequestContext ctx)
+        returns http:Ok|http:Forbidden|http:NotFound|http:BadRequest|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            string customError = "Failed to get user roles";
+            log:printError(customError, userGroups);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        database:CustomButton|error? customButton = database:getCustomButton(buttonId);
+        if customButton is error {
+            string fetchError = "Error while fetching the custom button!";
+            log:printError(fetchError, customButton);
+            return <http:InternalServerError>{
+                body: {message: fetchError}
+            };
+        }
+        if customButton is () {
+            string notFoundError = "Custom button not found!";
+            log:printError(notFoundError);
+            return <http:NotFound>{
+                body: {message: notFoundError}
+            };
+        }
+
+        int|error? result = database:deleteCustomButton(buttonId);
+        if result is error || result == () {
+            string customError = "Error while deleting custom button!";
+            log:printError(customError, result);
+            return <http:InternalServerError>{
+                body: {message: customError}
+            };
+        }
+        if result == 0 {
+            return http:NOT_FOUND;
+        }
+
+        return http:OK;
+    }
+
+    # Get trending contents.
+    #
+    # + ctx - Request context
+    # + return - Trending contents or error
+    resource function get trending\-contents(http:RequestContext ctx)
+        returns types:ContentResponse[]|http:InternalServerError {
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            return <http:InternalServerError>{body: constants:GET_USER_ID_ERROR};
+        }
+        string[]|error trendingContentNames = analytics:processTrendingContents();
+        if trendingContentNames is error {
+            string customError = "Error while processing trending contents";
+            log:printError(customError, trendingContentNames);
+            return <http:InternalServerError>{body: {message: customError}};
+        }
+
+        if trendingContentNames.length() == 0 {
+            return [];
+        }
+
+        types:ContentResponse[]|error result = database:getTrendingContents(userEmail, trendingContentNames);
+
+        if result is error {
+            string customError = "Error while fetching trending contents";
+            log:printError(customError, result);
+            return <http:InternalServerError>{body: {message: customError}};
+        }
+
+        return result;
+    }
+
+    # Get public visible testimonials.
+    #
+    # + ctx - Request context
+    # + return - Visible testimonials or error
+    resource function get testimonials(http:RequestContext ctx)
+        returns database:CustomerTestimonial[]|http:InternalServerError {
+
+        database:CustomerTestimonial[]|error result = database:getAllTestimonials();
+        if result is error {
+            string customError = "Error while fetching testimonials";
+            log:printError(customError, result);
+            return <http:InternalServerError>{body: {message: customError}};
+        }
+
+        return result;
+    }
+
+    # Create a new customer testimonial (admin only).
+    #
+    # + ctx - Request context
+    # + testimonial - Testimonial create payload
+    # + return - Success or error
+    resource function post testimonials(http:RequestContext ctx, database:CustomerTestimonialCreatePayload testimonial)
+        returns http:Created|http:BadRequest|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{body: {message: constants:GET_USER_ROLE_ERROR}};
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:GET_USER_ID_ERROR, userEmail);
+            return <http:InternalServerError>{body: {message: constants:GET_USER_ID_ERROR}};
+        }
+
+        int|error result = database:createTestimonial(testimonial, userEmail);
+        if result is error {
+            string customError = "Error while creating testimonial";
+            log:printError(customError, result);
+            return <http:InternalServerError>{body: {message: customError}};
+        }
+
+        return http:CREATED;
+    }
+
+    # Update a customer testimonial (admin only).
+    #
+    # + ctx - Request context
+    # + id - Testimonial ID
+    # + testimonial - Testimonial update payload
+    # + return - Success or error
+    resource function patch testimonials/[int id](http:RequestContext ctx,
+            database:CustomerTestimonialUpdatePayload testimonial)
+            returns http:Ok|http:NotFound|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{body: {message: constants:GET_USER_ROLE_ERROR}};
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
+        if userEmail is error {
+            log:printError(constants:GET_USER_ID_ERROR, userEmail);
+            return <http:InternalServerError>{body: {message: constants:GET_USER_ID_ERROR}};
+        }
+
+        database:CustomerTestimonial|error? testimonials = database:getTestimonialById(id);
+        if testimonials is error {
+            string customError = "Error while checking testimonials existence";
+            log:printError(customError, testimonials);
+            return <http:InternalServerError>{body: {message: customError}};
+        }
+
+        if testimonials is () {
+            return http:NOT_FOUND;
+        }
+
+        int|error? result = database:updateTestimonial(id, testimonial, userEmail);
+        if result is error || result is () {
+            string customError = "Error while updating testimonial";
+            log:printError(customError, result);
+            return <http:InternalServerError>{body: {message: customError}};
+        }
+
+        if result == 0 {
+            return http:NOT_FOUND;
+        }
+
+        return http:OK;
+    }
+
+    # Delete a customer testimonial (admin only).
+    #
+    # + ctx - Request context
+    # + id - Testimonial ID
+    # + return - Success or error
+    resource function delete testimonials/[int id](http:RequestContext ctx)
+        returns http:Ok|http:NotFound|http:Forbidden|http:InternalServerError {
+
+        string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
+        if userGroups is error {
+            log:printError(constants:GET_USER_ROLE_ERROR, userGroups);
+            return <http:InternalServerError>{body: {message: constants:GET_USER_ROLE_ERROR}};
+        }
+
+        if !authorization:checkPermission([salesAdmin], userGroups) {
+            log:printError(constants:UNAUTHORIZED_ACCESS_ERROR);
+            return http:FORBIDDEN;
+        }
+
+        database:CustomerTestimonial|error? testimonials = database:getTestimonialById(id);
+        if testimonials is error {
+            string customError = "Error while checking testimonial existence";
+            log:printError(customError, testimonials);
+            return <http:InternalServerError>{body: {message: customError}};
+        }
+
+        if testimonials is () {
+            return http:NOT_FOUND;
+        }
+
+        int|error? result = database:deleteTestimonialById(id);
+        if result is error || result is () {
+            string customError = "Error while deleting testimonial";
+            log:printError(customError, result);
+            return <http:InternalServerError>{body: {message: customError}};
+        }
+
+        if result == 0 {
+            return http:NOT_FOUND;
+        }
+
+        return http:OK;
     }
 }

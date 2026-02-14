@@ -16,9 +16,14 @@
 
 [package]
 org = "wso2"
-name = "sample_app"
-version = "1.0.0"
-distribution = "2201.8.4"
+name = "pitstop"
+version = "0.1.0"
+distribution = "2201.13.1"
 
 [build-options]
 observabilityIncluded = true
+
+[[platform.java21.dependency]]
+groupId = "com.mysql"
+artifactId = "mysql-connector-j"
+version = "8.3.0"

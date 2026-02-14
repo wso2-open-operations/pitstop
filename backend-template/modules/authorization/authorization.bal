@@ -13,20 +13,26 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+
 import ballerina/http;
 import ballerina/jwt;
 import ballerina/log;
 
+# JWT Configurations.
 public configurable AppRoles authorizedRoles = ?;
 
 # To handle authorization for each resource function invocation.
 public isolated service class JwtInterceptor {
-
     *http:RequestInterceptor;
-    isolated resource function default [string... path](http:RequestContext ctx, http:Request req)
-        returns http:NextService|http:Forbidden|http:InternalServerError|error? {
 
-        string|error idToken = req.getHeader(JWT_ASSERTION_HEADER);
+    isolated resource function default [string... path](http:RequestContext ctx, http:Request req)
+            returns http:NextService|http:Forbidden|http:InternalServerError|error? {
+
+        if req.method == http:HTTP_OPTIONS {
+            return ctx.next();
+        }
+
+        string|error idToken = req.getHeader(JWT_ASSERTION);
         if idToken is error {
             string errorMsg = "Missing invoker info header!";
             log:printError(errorMsg, idToken);
@@ -37,29 +43,44 @@ public isolated service class JwtInterceptor {
             };
         }
 
-        [jwt:Header, jwt:Payload]|jwt:Error result = jwt:decode(idToken);
-        if result is jwt:Error {
-            string errorMsg = "Error while reading the Invoker info!";
-            log:printError(errorMsg, result);
-            return <http:InternalServerError>{body: {message: errorMsg}};
+        [jwt:Header, jwt:Payload]|jwt:Error decoded = jwt:decode(idToken);
+        if decoded is jwt:Error {
+            string errorMsg = "Error while reading the invoker info!";
+            log:printError(errorMsg, decoded);
+            return <http:InternalServerError>{
+                body: {
+                    message: errorMsg
+                }
+            };
         }
 
-        CustomJwtPayload|error userInfo = result[1].cloneWithType(CustomJwtPayload);
+        CustomJwtPayload|error userInfo = decoded[1].cloneWithType(CustomJwtPayload);
         if userInfo is error {
-            string errorMsg = "Malformed Invoker info object!";
+            string errorMsg = "Malformed invoker info object!";
             log:printError(errorMsg, userInfo);
-            return <http:InternalServerError>{body: {message: errorMsg}};
+            return <http:InternalServerError>{
+                body: {
+                    message: errorMsg
+                }
+            };
         }
 
+        // Authorization check
         foreach anydata role in authorizedRoles.toArray() {
             if userInfo.groups.some(r => r === role) {
-                ctx.set(HEADER_USER_INFO, userInfo);
+                ctx.set(REQUESTED_BY_USER_EMAIL, userInfo.email);
+                ctx.set(REQUESTED_BY_USER_ROLES, userInfo.groups);
+
                 return ctx.next();
             }
         }
 
-        log:printError("User is missing required permissions");
+        log:printError(string `${userInfo.email} is missing required permissions, only has ${userInfo.groups.toBalString()}`);
 
-        return <http:Forbidden>{body: {message: "Insufficient privileges!"}};
+        return <http:Forbidden>{
+            body: {
+                message: "Insufficient privileges!"
+            }
+        };
     }
 }

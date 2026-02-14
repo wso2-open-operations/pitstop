@@ -14,50 +14,376 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import se_wiki.types;
 import ballerina/sql;
-import ballerinax/mysql;
 
-# [Configurable] database configs.
+# [Configurable] Database configuration.
 type DatabaseConfig record {|
-    # Database User 
+    # Database Host
+    string host;
+    # Database User
     string user;
     # Database Password
     string password;
     # Database Name
     string database;
-    # Database Host
-    string host;
-    # Database port
-    int port;
-    # Database connection pool
-    sql:ConnectionPool connectionPool;
+    # maxOpenConnections -   The maximum open connections
+    int maxOpenConnections = 10;
+    # maxConnectionLifeTime - The maximum lifetime of a connection
+    decimal maxConnectionLifeTime = 180.0;
+    # minIdleConnections - The minimum idle time of a connection  
+    int minIdleConnections = 5;
 |};
 
-# Database config record.
-type DatabaseClientConfig record {|
-    *DatabaseConfig;
-    # Additional configurations related to the MySQL database connection
-    mysql:Options? options;
+# Route payload.
+public type RoutePayload record {|
+    # Parent ID
+    int parentId;
+    # Page title
+    string title;
+    # Page description
+    string? description = ();
+    # Page thumbnail
+    string? thumbnail = ();
+    # Route Path item name
+    string label;
+    # Navbar menu item
+    string menuItem;
+    # Page custom theme
+    types:CustomTheme? customPageTheme = ();
+    # Page visibility
+    boolean isVisible;
 |};
 
-# [Database]SampleCollection type.
-public type SampleCollection record {|
-    # Id of the collection
+# Custom button record.
+public type CustomButton record {|
+    # Button ID
     int id;
-    # Name
-    string name;
-    # Timestamp, when created
-    string createdOn;
-    # Person, who created
-    string createdBy;
-    # Timestamp, when updated
-    string updatedOn;
-    # Person, who updates
-    string updatedBy;
+    # Content ID
+    @sql:Column {name: "content_id"}
+    string contentId;
+    # Button label
+    string label;
+    # Button description
+    string? description = ();
+    # Button icon
+    string? icon = ();
+    # Button color
+    string? color = ();
+    # Button action type
+    string action;
+    # Button action value
+    @sql:Column {name: "action_value"}
+    string? actionValue = ();
+    # Button visibility
+    @sql:Column {name: "is_visible"}
+    boolean isVisible;
+    # Button order
+    @sql:Column {name: "button_order"}
+    int 'order;
+    # Created timestamp
+    @sql:Column {name: "created_at"}
+    string? createdAt = ();
+    # Updated timestamp
+    @sql:Column {name: "updated_at"}
+    string? updatedAt = ();
 |};
 
-# [Database]Collection insert type.
-public type AddSampleCollection record {|
-    # Name of the collection
+# Custom button create payload.
+public type CustomButtonCreatePayload record {|
+    # Content ID
+    string contentId;
+    # Button label
+    string label;
+    # Button description
+    string? description = ();
+    # Button icon
+    string? icon = ();
+    # Button color
+    string? color = ();
+    # Button action type
+    string? action = ();
+    # Button action value
+    string? actionValue = ();
+    # Button visibility
+    boolean? isVisible;
+    # Button order
+    int 'order;
+|};
+
+# Custom button update payload.
+public type CustomButtonUpdatePayload record {|
+    # Content ID
+    string? contentId = ();
+    # Button label
+    string? label = ();
+    # Button description
+    string? description = ();
+    # Button icon
+    string? icon = ();
+    # Button color
+    string? color = ();
+    # Button action type
+    string? action = ();
+    # Button action value
+    string? actionValue = ();
+    # Button visibility
+    boolean? isVisible = ();
+    # Button order
+    int? 'order = ();
+|};
+
+# Page response record.
+public type PageResponse record {|
+    # Page title
+    string title;
+    # Page description
+    string description?;
+    # Page thumbnail
+    string thumbnail?;
+    # Custom Page theme
+    @sql:Column {name: "styling_info"}
+    string? customPageTheme;
+    # Sub page visibility
+    boolean isVisible;
+|};
+
+# Content response record.
+public type ContentResponse record {|
+    # Id of the content
+    @sql:Column {name: "content_id"}
+    int contentId;
+    # Route ID
+    @sql:Column {name: "section_id"}
+    int sectionId;
+    # Link to redirect to the content
+    @sql:Column {name: "content_link"}
+    string contentLink;
+    # Type of the content
+    @sql:Column {name: "content_type"}
+    string contentType;
+    # Content subtype of the content
+    @sql:Column {name: "content_sub_type"}
+    string? contentSubtype;
+    # Thumbnail image url
+    string thumbnail?;
+    # Content notes
+    string note?;
+    # Content description
+    string description;
+    # Likes count of the content
+    @sql:Column {name: "likes_count"}
+    int likesCount;
+    # likes for the content
+    boolean status?;
+    # Custom theme for the content
+    @sql:Column {name: "styling_info"}
+    string? customContentTheme;
+    # Content order
+    @sql:Column {name: "content_order"}
+    int contentOrder;
+    # content created date
+    @sql:Column {name: "created_on"}
+    string createdOn;
+    # number of comments
+    @sql:Column {name: "comment_count"}
+    int commentCount;
+    # Content tags
+    string tags?;
+    # Content visibility
+    @sql:Column {name: "is_visible"}
+    boolean isVisible;
+    # Content reuse 
+    @sql:Column {name: "is_reused"}
+    boolean isReused;
+|};
+
+# Section helper record.
+public type Section record {|
+    # Section Id
+    @sql:Column {name: "section_id"}
+    int sectionId;
+    # Section title
+    string title;
+    # Section description
+    string description?;
+    # Type of the section
+    @sql:Column {name: "section_type"}
+    string sectionType;
+    # Image url
+    @sql:Column {name: "image_url"}
+    string imageUrl?;
+    # Redirect url
+    @sql:Column {name: "redirect_url"}
+    string redirectUrl?;
+    # Section order
+    @sql:Column {name: "section_order"}
+    int sectionOrder;
+    # Custom section theme
+    @sql:Column {name: "styling_info"}
+    string customSectionTheme?;
+    # Tags associated with the section
+    @sql:Column {name: "tags"}
+    string tags?;
+|};
+
+# Pinned content response record.
+public type PinnedContentResponse record {|
+    # Id of the content
+    @sql:Column {name: "content_id"}
+    int contentId;
+    # Route ID
+    @sql:Column {name: "section_id"}
+    int sectionId;
+    # Link to redirect to the content
+    @sql:Column {name: "content_link"}
+    string contentLink;
+    # Type of the content
+    @sql:Column {name: "content_type"}
+    string contentType;
+    # Content subtype of the content
+    @sql:Column {name: "content_sub_type"}
+    string? contentSubtype;
+    # Thumbnail image url
+    string thumbnail?;
+    # Content notes
+    string note?;
+    # Content description
+    string description;
+    # Likes count of the content
+    @sql:Column {name: "likes_count"}
+    int likesCount;
+    # likes for the content
+    boolean status?;
+    # Custom theme for the content
+    @sql:Column {name: "styling_info"}
+    string? customContentTheme;
+    # Content order
+    @sql:Column {name: "content_order"}
+    int contentOrder;
+    # content created date
+    @sql:Column {name: "created_on"}
+    string createdOn;
+    # number of comments
+    @sql:Column {name: "comment_count"}
+    int commentCount;
+    # Content tags
+    string tags?;
+    # Content visibility
+    @sql:Column {name: "is_visible"}
+    boolean isVisible;
+    # Pinned timestamp
+    @sql:Column {name: "pinned_at"}
+    string pinnedAt;
+    # Content reuse 
+    @sql:Column {name: "is_reused"}
+    boolean isReused;
+|};
+
+# Count response record.
+public type CountResponse record {|
+    # Count value
+    int count;
+|};
+
+# Content ID response record.
+public type ContentIdResponse record {|
+    # Content ID
+    @sql:Column {name: "content_id"}
+    int contentId;
+|};
+
+# Customer testimonial record.
+public type CustomerTestimonial record {|
+    # Testimonial ID
+    int id;
+    # Logo URL
+    @sql:Column {name: "logo_url"}
+    string logoUrl;
+    # Customer name
     string name;
+    # Subtitle (optional)
+    @sql:Column {name: "sub_title"}
+    string? subTitle;
+    # Website URL
+    @sql:Column {name: "website_url"}
+    string websiteUrl;
+    # Link label
+    @sql:Column {name: "link_label"}
+    string linkLabel;
+    # Created by user email
+    @sql:Column {name: "created_by"}
+    string? createdBy;
+    # Updated by user email
+    @sql:Column {name: "updated_by"}
+    string? updatedBy;
+    # Created timestamp
+    @sql:Column {name: "created_at"}
+    string? createdAt;
+    # Updated timestamp
+    @sql:Column {name: "updated_at"}
+    string? updatedAt;
+    # Shareable status
+    @sql:Column {name: "is_shareable"}
+    boolean isShareable;
+|};
+
+# Customer testimonial create payload.
+public type CustomerTestimonialCreatePayload record {|
+    # Logo URL
+    string logoUrl;
+    # Customer name
+    string name;
+    # Subtitle (optional)
+    string? subTitle;
+    # Website URL
+    string websiteUrl;
+    # Link label
+    string linkLabel;
+    # Shareable status
+    boolean? isShareable;
+|};
+
+# Customer testimonial update payload.
+public type CustomerTestimonialUpdatePayload record {|
+    # Logo URL
+    string? logoUrl;
+    # Customer name
+    string? name;
+    # Subtitle (optional)
+    string? subTitle;
+    # Website URL
+    string? websiteUrl;
+    # Link label
+    string? linkLabel;
+    # Shareable status
+    boolean? isShareable;
+|};
+
+# Content query mode enum.
+public enum ContentQueryMode {
+    TEXT = "text",
+    TAGS = "tags", 
+    TAGS_AND_KEYWORDS = "tagsAndKeywords",
+    TRENDING = "trending"
+}
+
+# Content query parameters record.
+public type ContentFilter record {|
+    # Logged-in user email
+    string userEmail;
+    # Search mode
+    ContentQueryMode mode;
+    # Text search 
+    string? text = ();
+    # Array of tags for filtering
+    string[] tags = [];
+    # Array of keywords 
+    string[] keywords = [];
+    # Array of trending  content descriptions 
+    string[] trendingDescriptions = [];
+    # Pagination limit
+    int 'limit = 10;
+    # Pagination offset
+    int 'offset = 0;
 |};
