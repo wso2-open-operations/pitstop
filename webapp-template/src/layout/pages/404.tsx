@@ -14,21 +14,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import React from "react";
 import { Box, Button, Typography } from "@mui/material";
-import {
-  Link as RouterLink,
-  LinkProps as RouterLinkProps,
-} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import notFoundImage from "@assets/images/not-found.svg";
 
-const Link = React.forwardRef<HTMLAnchorElement, RouterLinkProps>(function Link(
-  itemProps,
-  ref
-) {
-  return <RouterLink ref={ref} {...itemProps} role={undefined} />;
-});
+const clickHandler = (navigate: ReturnType<typeof useNavigate>) => () => {
+  navigate("/");
+};
 
-export default function NotFoundPage() {
+export default function Error() {
+  const navigate = useNavigate();
   return (
     <Box
       sx={{
@@ -37,15 +32,17 @@ export default function NotFoundPage() {
         alignItems: "center",
         flexDirection: "column",
         minHeight: "100vh",
+        background: "#141414",
       }}
     >
-      <Typography variant="h1" style={{ color: "gray" }}>
-        404
+      <img src={notFoundImage} alt="404" height={200} />
+      <Typography sx={{ mt: 5, fontWeight: "bold" }} variant="h4" style={{ color: "gray" }}>
+        404 - Not Found
       </Typography>
       <Typography variant="h6" style={{ color: "gray" }}>
         The page you’re looking for doesn’t exist.
       </Typography>
-      <Button component={Link} to={"/"} variant="contained">
+      <Button sx={{ mt: 5 }} variant="contained" onClick={clickHandler(navigate)}>
         Back Home
       </Button>
     </Box>

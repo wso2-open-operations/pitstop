@@ -13,76 +13,57 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-import AppHandler from "@app/AppHandler";
-import { AuthProvider } from "@asgardeo/auth-react";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { SnackbarProvider } from "notistack";
-import { Provider } from "react-redux";
 
-import { createContext, useEffect, useMemo, useState } from "react";
-
-import { APP_NAME, AsgardeoConfig } from "@config/config";
-import AppAuthProvider from "@context/AuthContext";
-import { store } from "@slices/store";
-import { themeSettings } from "@root/src/theme";
+import { createContext, useState, useMemo } from "react";
+import { store } from "./slices/store";
 import { ThemeMode } from "@utils/types";
+import { AsgardioConfig } from "./config/config";
+import AppHandler from "@app/AppHandler";
+import { themeSettings } from "./theme";
+import "./App.scss";
+import { Provider } from "react-redux";
+import AppAuthProvider from "@context/AuthContext";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { AuthProvider } from "@asgardeo/auth-react";
+import { SnackbarProvider } from "notistack";
+import { PITSTOP_APP_THEME } from "./config/constant";
 
-import "./index.css";
-
-export const ColorModeContext = createContext({
-  mode: ThemeMode.Light,
-  toggleColorMode: () => {},
-});
+// eslint-disable-next-line react-refresh/only-export-components
+export const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
 function App() {
-  document.title = APP_NAME;
   const processLocalThemeMode = (): ThemeMode => {
-    try {
-      const savedTheme = localStorage.getItem("internal-app-theme");
-      if (savedTheme === ThemeMode.Light || savedTheme === ThemeMode.Dark) {
-        return savedTheme;
-      }
-
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const systemTheme = prefersDark ? ThemeMode.Dark : ThemeMode.Light;
-
-      localStorage.setItem("internal-app-theme", systemTheme);
-      return systemTheme;
-    } catch (err) {
-      console.error("Theme detection failed, defaulting to light mode.", err);
-      return ThemeMode.Light;
+    const storedTheme = localStorage.getItem(PITSTOP_APP_THEME) as ThemeMode;
+    if (storedTheme === ThemeMode.Dark) {
+      return ThemeMode.Dark;
     }
+    localStorage.setItem(PITSTOP_APP_THEME, ThemeMode.Light);
+    return ThemeMode.Light;
   };
 
   const [mode, setMode] = useState<ThemeMode>(processLocalThemeMode());
 
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", mode);
-  }, [mode]);
-
   const colorMode = useMemo(
     () => ({
       toggleColorMode: () => {
-        const newMode = mode === ThemeMode.Light ? ThemeMode.Dark : ThemeMode.Light;
-        // Update localStorage
-        localStorage.setItem("internal-app-theme", newMode);
-        // Update state
-        setMode(newMode);
-        // Apply the data-theme attribute to the document element
-        document.documentElement.setAttribute("data-theme", newMode);
+        setMode((prevMode) => {
+          const newMode = prevMode === ThemeMode.Light ? ThemeMode.Dark : ThemeMode.Light;
+          localStorage.setItem(PITSTOP_APP_THEME, newMode);
+          return newMode;
+        });
       },
     }),
-    [mode],
+    []
   );
 
   const theme = useMemo(() => createTheme(themeSettings(mode)), [mode]);
 
   return (
-    <ColorModeContext.Provider value={{ mode, toggleColorMode: colorMode.toggleColorMode }}>
+    <ColorModeContext.Provider value={colorMode}>
       <SnackbarProvider maxSnack={3} preventDuplicate>
         <ThemeProvider theme={theme}>
           <Provider store={store}>
-            <AuthProvider config={AsgardeoConfig}>
+            <AuthProvider config={AsgardioConfig}>
               <AppAuthProvider>
                 <AppHandler />
               </AppAuthProvider>

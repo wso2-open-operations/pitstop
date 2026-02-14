@@ -13,92 +13,100 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-import { Box, useTheme } from "@mui/material";
-import { useSnackbar } from "notistack";
-import { useSelector } from "react-redux";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
-
-import PreLoader from "@component/common/PreLoader";
-import { redirectUrl as savedRedirectUrl } from "@config/constant";
+import { CURRENT_YEAR } from "@config/constant";
+import Header from "./header";
 import ConfirmationModalContextProvider from "@context/DialogContext";
-import Header from "@layout/header";
-import Sidebar from "@layout/sidebar";
-import { selectRoles } from "@slices/authSlice/auth";
-import { type RootState, useAppSelector } from "@slices/store";
+import { selectUserInfo } from "@slices/authSlice";
+import pJson from "../../package.json";
+import { RootState, useAppSelector } from "@slices/store";
+import { Suspense, useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import Box from "@mui/material/Box";
+import { useTheme } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { Typography } from "@mui/material";
+import { Outlet, useLocation, useNavigate, matchRoutes } from "react-router-dom";
+import { useSnackbar } from "notistack";
+import ConsentHandler from "@component/common/ConsentHandler";
+import MatomoTracker from "../analytics/MatomoTracker";
 
 export default function Layout() {
+  const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const common = useAppSelector((state: RootState) => state.common);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [open, setOpen] = useState(false);
-  const roles = useSelector(selectRoles);
-  const theme = useTheme();
 
-  const showSnackbar = useCallback(() => {
-    if (common.timestamp !== null) {
+  useEffect(() => {
+    if (common.timestamp != null) {
       enqueueSnackbar(common.message, {
         variant: common.type,
         preventDuplicate: true,
-        anchorOrigin: { horizontal: "right", vertical: "bottom" },
+        anchorOrigin: common.anchorOrigin,
       });
     }
-  }, [common.message, common.type, common.timestamp, enqueueSnackbar]);
+  }, [common.timestamp]);
 
   useEffect(() => {
-    showSnackbar();
-  }, [showSnackbar]);
-
-  useEffect(() => {
-    const redirectUrl = localStorage.getItem(savedRedirectUrl);
-    if (redirectUrl) {
-      navigate(redirectUrl);
-      localStorage.removeItem(savedRedirectUrl);
+    if (localStorage.getItem("hris-app-redirect-url")) {
+      navigate(localStorage.getItem("hris-app-redirect-url") as string);
+      localStorage.removeItem("hris-app-redirect-url");
     }
-  }, [navigate]);
+  }, []);
+
+  const route = useAppSelector((state: RootState) => state.route);
+  const location = useLocation();
+  const matches = matchRoutes(route.routes, location.pathname);
+  const theme = useTheme();
+  const userInfo = useSelector(selectUserInfo);
+
+  //----------------TO:DO-------------------------------------------//
+  const [userConsent, setUserConsent] = useState<boolean>(true);
+
+  const getAppBarTitle = (): string => {
+    let title: string = "";
+    matches?.forEach((obj) => {
+      if (location.pathname === obj.pathname) {
+        title = obj.route.menuItem;
+      }
+    });
+
+    return title;
+  };
 
   return (
     <ConfirmationModalContextProvider>
-      {/* Full screen container */}
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          height: "100vh",
-          width: "100vw",
-          backgroundColor: theme.palette.surface.primary.active,
-        }}
-      >
-        {/* Header */}
-        <Header />
-
-        {/* Main content container */}
-        <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          {/* Sidebar */}
-          <Box sx={{ width: "fit-content", height: "100%" }}>
-            <Sidebar
-              roles={roles}
-              currentPath={location.pathname}
-              open={open}
-              handleDrawer={() => setOpen(!open)}
-            />
-          </Box>
-
-          {/* Main content area */}
-          <Box
-            sx={{
-              flex: 1,
-              height: "100%",
-              padding: theme.spacing(3),
-            }}
-          >
-            <Suspense fallback={<PreLoader isLoading message="Loading page data" />}>
-              <Outlet />
-            </Suspense>
-          </Box>
-        </Box>
+      <Box sx={{ display: "flex", overflowX: "hidden" }}>
+        <CssBaseline />
+        {userConsent ? (
+          <>
+            <MatomoTracker />
+            <Header theme={theme} title={getAppBarTitle()} currentPath={location.pathname} email={userInfo?.email} />
+            <Box component="main" sx={{ flexGrow: 1, p: 0, mt: 6, overflowX: "hidden" }}>
+              <Suspense fallback={<div>Loading...</div>}>
+                <Outlet />
+              </Suspense>
+              <Box
+                className="layout-note"
+                component="footer"
+                sx={{
+                  background: theme.palette.mode === "light" ? "#eeeeee" : "black",
+                  height: "35px",
+                  position: "fixed",
+                  pt: 1,
+                  bottom: 0,
+                  width: "100%",
+                  zIndex: 1000,
+                }}
+              >
+                <Typography variant="h6" sx={{ color: "#919090", pl: 2 }}>
+                  v {pJson.version} | © {CURRENT_YEAR} WSO2 LLC
+                </Typography>
+              </Box>
+            </Box>
+          </>
+        ) : (
+          <ConsentHandler setUserConsent={setUserConsent} />
+        )}
       </Box>
     </ConfirmationModalContextProvider>
   );

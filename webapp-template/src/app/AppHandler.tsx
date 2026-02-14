@@ -14,93 +14,72 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { RouterProvider, createBrowserRouter, RouteObject } from "react-router-dom";
-import { useEffect, useState } from "react";
-import ErrorHandler from "@component/common/ErrorHandler";
-import PreLoader from "@component/common/PreLoader";
-import Layout from "@layout/Layout";
-import NotFoundPage from "@layout/pages/404";
+import Error from "../layout/pages/404";
 import MaintenancePage from "@layout/pages/Maintenance";
-import { RootState, store, useAppSelector } from "@slices/store";
-import { isIncludedRole } from "@utils/utils";
-import { routes } from "../route";
-import type { RouteObjectWithRole } from "../types/types";
+import { getActiveRoutesV2 } from "../route";
+import Layout from "../layout/Layout";
+import { RootState, useAppSelector } from "@slices/store";
+import PreLoader from "@component/common/PreLoader";
+import ErrorHandler from "@component/common/ErrorHandler";
+import Search from "@view/search/index";
+import { RouterProvider, createBrowserRouter } from "react-router-dom";
+import { useMemo } from "react";
+import Summary from "@view/summary/index";
+import VerticalTemplate from "@layout/pages/VerticalTemplate";
+import React from "react";
+import { View } from "@root/src/view";
 
-
-const createRouteLoader = (allowedRoles?: string[]) => {
-  return () => {
-    if (!allowedRoles || allowedRoles.length === 0) {
-      return null;
-    }
-
-    const state = store.getState();
-    const userRoles = state.auth.roles;
-
-    if (!isIncludedRole(userRoles, allowedRoles)) {
-      throw new Response("Forbidden", { status: 403 })
-    }
-
-    return null;
-  };
-};
-
-const convertRoutesToStaticRoutes = (
-  routes: RouteObjectWithRole[],
-): RouteObject[] => {
-  return routes.map((route) => ({
-    path: route.path,
-    element: route.element,
-    loader: createRouteLoader(route.allowRoles),
-    errorElement: route.errorElement,
-    children: route.children ? convertRoutesToStaticRoutes(route.children) : undefined,
-  }));
-};
-
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <Layout />,
-    errorElement: <NotFoundPage />,
-    children: convertRoutesToStaticRoutes(routes),
-  },
-]);
+// For matomo integration
+export declare let _paq: unknown[];
 
 const AppHandler = () => {
-  const [appState, setAppState] = useState<"loading" | "success" | "failed" | "maintenance">(
-    "loading",
-  );
-
   const auth = useAppSelector((state: RootState) => state.auth);
+  const route = useAppSelector((state: RootState) => state.route);
 
-  useEffect(() => {
-    if (auth.mode === "maintenance") {
-      setAppState("maintenance");
-    } else if (auth.status === "loading") {
-      setAppState("loading");
-    } else if (auth.status === "success") {
-      setAppState("success");
-    } else if (auth.status === "failed") {
-      setAppState("failed");
-    }
-  }, [auth.status, auth.mode]);
+  //------------------Redirect Paths--------------------//
+  const router = useMemo(() => createBrowserRouter([
+    {
+      path: "/",
+      element: <Layout />,
+      errorElement: <Error />,
+      children: getActiveRoutesV2(route.routes),
+    },
+    {
+      path: "/search",
+      element: <Search />,
+      errorElement: <Error />,
+    },
+    {
+      path: "/report",
+      element: <Summary />,
+      errorElement: <Error />,
+    },
+    {
+      path: "/my-board",
+      element: React.createElement(View.MyBoard),
+      errorElement: <Error />,
+    },
+    {
+      path: "/vertical/:verticalName/:tags",
+      element: <VerticalTemplate />,
+      errorElement: <Error />,
+    },
+  ]), [route.routes]);
+  //------------------------------------------------------//
 
-  const renderApp = () => {
-    switch (appState) {
-      case "loading":
-        return <PreLoader isLoading={true} message={"We are getting things ready ..."} />;
-
-      case "failed":
-        return <ErrorHandler message={auth.statusMessage} />;
-
-      case "success":
-        return <RouterProvider router={router} />;
-
-      case "maintenance":
-        return <MaintenancePage />;
-    }
-  };
-
-  return <>{renderApp()}</>;
+  return (
+    <>
+      {auth.status === "loading" && <PreLoader isLoading={true} message={auth.statusMessage}></PreLoader>}
+      {auth.status === "success" && auth.mode === "active" && route.routes.length > 0 && (
+        <RouterProvider router={router} />
+      )}
+      {auth.status === "success" && auth.mode === "active" && route.routes.length === 0 && route.state === "failed" && (
+        <ErrorHandler message={route.stateMessage} />
+      )}
+      {auth.status === "success" && auth.mode === "maintenance" && <MaintenancePage />}
+      {auth.status === "failed" && <ErrorHandler message={auth.errorMessage} />}
+    </>
+  );
 };
 
 export default AppHandler;

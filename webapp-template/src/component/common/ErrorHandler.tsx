@@ -14,35 +14,32 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Box, Container } from "@mui/material";
-
-import Wso2Logo from "@assets/images/wso2-logo.svg";
-import StateWithImage from "@component/ui/StateWithImage";
-import ErrorSvg from "@assets/images/error.svg"
-import { ErrorHandlerProps } from "@root/src/utils/types";
+import { Box, Card, CardContent, Typography, Stack } from "@mui/material";
+import { ErrorHandlerProps } from "../../types/types";
+import warningImage from "@assets/images/warning.svg";
 
 const ErrorHandler = (props: ErrorHandlerProps) => {
   return (
     <Box
       sx={{
-        paddingX: 2,
-        paddingY: 5,
+        background: "background.paper",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
       }}
     >
-      <Container maxWidth="md">
-        <Box sx={{display: "flex", flexDirection: "column", alignItems: "center", gap: 2}}>
-            <img
-              alt="logo"
-              width="150"
-              height="auto"
-              src={Wso2Logo}
-            />
-            <StateWithImage
-              message={props.message || "Something went wrong! Please try again later."}
-              imageUrl={ErrorSvg}
-            />
-        </Box>
-      </Container>
+      <Card sx={{ borderRadius: "0px", p: 15, height: "100vh" }} variant="outlined">
+        <CardContent>
+          <Stack direction="column" justifyContent="center" alignItems="center" spacing={5}>
+            <Box>
+              <img alt="logo" width="300" height="auto" src={warningImage}></img>
+            </Box>
+            <Box>
+              <Typography variant="h3">{props.message}</Typography>
+            </Box>
+          </Stack>
+        </CardContent>
+      </Card>
     </Box>
   );
 };

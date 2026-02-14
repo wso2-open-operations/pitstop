@@ -13,32 +13,38 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+
+import authReducer from "@slices/authSlice/index";
+import employeeReducer from "@slices/employeeSlice/employee";
+import pageReducer from "@slices/pageSlice/page";
+import routeReducer from "@slices/routeSlice/route";
+import sectionReducer from "@slices/sectionSlice/section";
+import commonReducer from "@slices/commonSlice/common";
+import customButtonReducer from "@slices/customButtonSlice/customButton";
+import customerTestimonialsReducer from "@slices/customerTestimonialSlice/customerTestimonial";
+
+import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { enableMapSet } from "immer";
-import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
-
-import authReducer from "@slices/authSlice/auth";
-import collectionReducer from "@slices/collections/collection";
-import commonReducer from "@slices/commonSlice/common";
-import appConfigReducer from "@slices/configSlice/config";
-import employeeReducer from "@slices/employeeSlice/employee";
-import userReducer from "@slices/userSlice/user";
 
 enableMapSet();
 
 export const store = configureStore({
   reducer: {
-    auth: authReducer,
-    user: userReducer,
-    common: commonReducer,
     employee: employeeReducer,
-    collection: collectionReducer,
-    appConfig: appConfigReducer,
+    page: pageReducer,
+    route: routeReducer,
+    section: sectionReducer,
+    auth: authReducer,
+    common: commonReducer,
+    customButton: customButtonReducer,
+    customerTestimonials: customerTestimonialsReducer,
   },
-  middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
 });
 
+// Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>;
+// Inferred type: {auth: AuthState, employee: EmployeeState, page: PageState, form:}
 export type AppDispatch = typeof store.dispatch;
 
 export const useAppDispatch: () => AppDispatch = useDispatch;

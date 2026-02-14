@@ -16,21 +16,51 @@
 
 import { BasicUserInfo, DecodedIDTokenPayload } from "@asgardeo/auth-spa";
 
-import { Role } from "@slices/authSlice/auth";
-import { Collection } from "@slices/collections/collection";
+export enum Role {
+  SALES_ADMIN = "SALES_ADMIN",
+  EMPLOYEE = "EMPLOYEE",
+  SALES_MASTER = "SALES_MASTER",
+}
+
+export interface EmployeeInfo {
+  employeeThumbnail: string;
+  reportingLead: string;
+  reportingLeadThumbnail: string;
+  workEmail: string;
+  startDate: string;
+  joinedBusinessUnit: string;
+  joinedDepartment: string;
+  joinedTeam: string;
+  joinedLocation: string;
+  lastPromotedDate: string | null;
+}
+
+export type AuthFlowState =
+  | "start"
+  | "l_choreo_tokens"
+  | "e_choreo_tokens"
+  | "l_user_privileges"
+  | "e_user_privileges"
+  | "end";
 
 export interface AuthState {
-  status: State;
+  status: "failed" | "loading" | "idle" | "success";
   mode: "active" | "maintenance";
   statusMessage: string | null;
   isAuthenticated: boolean;
   userInfo: BasicUserInfo | null;
+  idToken: string | null;
+  isIdTokenExpired: boolean | null;
   decodedIdToken: DecodedIDTokenPayload | null;
   roles: Role[];
+  userPrivileges: number[] | null;
+  errorMessage: string | null;
+  authFlowState: AuthFlowState;
 }
 
 export interface AuthData {
   userInfo: BasicUserInfo;
+  idToken: string;
   decodedIdToken: DecodedIDTokenPayload;
 }
 
@@ -48,37 +78,33 @@ export interface Header {
   align: "left" | "right" | "center";
 }
 
+export enum FILETYPE {
+  Slide = "slides",
+  External_Link = "external",
+  Youtube = "youtube",
+  Lms = "lms",
+  Salesforce = "salesforce",
+  GSheet = "gsheet",
+}
+
+export enum CONTENT_SUBTYPE {
+  Generic = "generic",
+  Pdf = "pdf",
+  Video = "video",
+  GDoc = "gdoc",
+}
+
+export enum SectionType {
+  Image = "image",
+  Section = "section",
+}
+
 export enum ThemeMode {
   Light = "light",
   Dark = "dark",
 }
 
-export interface PreLoaderProps {
-  message?: string;
-  hideLogo?: boolean;
-  isLoading?: boolean;
-}
-
-export interface ErrorHandlerProps {
-  message: string | null;
-}
-
-export enum State {
-  failed = "failed",
-  success = "success",
-  loading = "loading",
-  idle = "idle",
-}
-
-export enum ConfirmationType {
-  update = "update",
-  send = "send",
-  upload = "upload",
-  accept = "accept",
-}
-
-export interface CommonCardProps {
-  collection: Collection;
-  actions: React.ReactElement<any, string | React.JSXElementConstructor<any>>;
-  dataCardIndex: number;
+export enum MyBoardPanelTypes {
+  PINNED = "pinned",
+  ESSENTIAL = "essential",
 }
