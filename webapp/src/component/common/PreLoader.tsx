@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { PreLoaderProps } from "../../types/types";
+import { PreLoaderProps } from "@/types/types";
 import Typography from "@mui/material/Typography";
 import { Box, Container, Stack } from "@mui/material";
 import LinearProgress from "@mui/material/LinearProgress";

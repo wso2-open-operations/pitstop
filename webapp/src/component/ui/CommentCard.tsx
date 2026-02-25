@@ -41,7 +41,7 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { useAppDispatch, useAppSelector, RootState } from "@slices/store";
 import { updateComment, deleteComment } from "@slices/pageSlice/page";
 import { enqueueSnackbarMessage } from "@slices/commonSlice/common";
-import { CommentsResponse } from "../../types/types";
+import { CommentsResponse } from "@/types/types";
 
 export interface CommentCardProps {
   commentResponse: CommentsResponse;

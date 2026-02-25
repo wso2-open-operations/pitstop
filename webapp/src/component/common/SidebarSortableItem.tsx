@@ -18,7 +18,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Box } from "@mui/material";
 import React from "react";
-import { SideBarSortableItemProps } from "../../types/types";
+import { SideBarSortableItemProps } from "@/types/types";
 
 const SidebarSortableItem = ({
   id,

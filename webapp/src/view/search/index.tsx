@@ -35,7 +35,7 @@ import {
   Box as MuiBox,
   Pagination,
 } from "@mui/material";
-import { SkeletonCard } from "../../component/ui/content/SkeletonCard";
+import { SkeletonCard } from "@component/ui/content/SkeletonCard";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { clearSearchResults } from "@slices/pageSlice/page";
 import searchImage from "@assets/images/search.png";

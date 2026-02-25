@@ -54,7 +54,7 @@ import LinkIcon from "@mui/icons-material/Link";
 import AddContentDialogBox from "@component/dialogs/ContentDialogBox";
 import DeleteDialogBox from "../../dialogs/DeleteDialogBox";
 import { getContentsInfo, reorderContents } from "@slices/pageSlice/page";
-import GridSortableItem from "@component/common/VerticalSortableItem";
+import GridSortableItem from "@component/common/GridSortableItem";
 import { useLocation } from "react-router-dom";
 import CarouselSection from "@component/ui/section/CarouselSection";
 import SuggestedCarousel from "@component/ui/section/SuggestedCarousel";

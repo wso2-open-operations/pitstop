@@ -18,7 +18,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Box, IconButton } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import { GridSortableItemProps } from "../../types/types";
+import { GridSortableItemProps } from "@/types/types";
 
 const GridSortableItem = ({ id, children, disabled = false }: GridSortableItemProps) => {
   const {

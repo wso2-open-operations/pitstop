@@ -17,7 +17,7 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { AppConfig } from "@config/config";
 import { ApiService } from "@utils/apiService";
-import { CustomButton, CreateCustomButton, RouteStatuses } from "../../types/types";
+import { CustomButton, CreateCustomButton, RouteStatuses } from "@/types/types";
 import { enqueueSnackbarMessage } from "@slices/commonSlice/common";
 
 interface CustomButtonState {

@@ -64,7 +64,7 @@ import { RootState, useAppSelector } from "@slices/store";
 import { Role } from "@utils/types";
 
 import { ColorModeContext } from "../../App";
-import { RouteResponse } from "../../types/types";
+import { RouteResponse } from "@/types/types";
 import Sidebar from "../sidebar";
 
 const StyledAppBar = styled(MuiAppBar)<MuiAppBarProps>(({ theme }) => ({

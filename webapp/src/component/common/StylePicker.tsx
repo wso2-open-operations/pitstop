@@ -36,7 +36,7 @@ import FormatColorTextIcon from "@mui/icons-material/FormatColorText";
 import FormatColorFillIcon from "@mui/icons-material/FormatColorFill";
 import FormatSizeIcon from "@mui/icons-material/FormatSize";
 import TextFormatIcon from "@mui/icons-material/TextFormat";
-import { CustomStylingInfo } from "../../types/types";
+import { CustomStylingInfo } from "@/types/types";
 import { useState } from "react";
 
 interface StylePickerProps {

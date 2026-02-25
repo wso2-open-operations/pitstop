@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { IframeViewerDialogBoxProps } from "../../types/types";
+import { IframeViewerDialogBoxProps } from "@/types/types";
 import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,

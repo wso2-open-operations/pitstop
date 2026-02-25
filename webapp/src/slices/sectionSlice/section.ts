@@ -20,7 +20,7 @@ import { enqueueSnackbarMessage } from "@slices/commonSlice/common";
 import { getPageData } from "@slices/pageSlice/page";
 import { ApiService } from "@utils/apiService";
 
-import { RouteStatuses, SectionPayload, UpdateSectionPayload } from "../../types/types";
+import { RouteStatuses, SectionPayload, UpdateSectionPayload } from "@/types/types";
 
 const initialState: SectionState = {
   stateMessage: null,

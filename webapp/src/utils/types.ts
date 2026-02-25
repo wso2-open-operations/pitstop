@@ -15,7 +15,7 @@
 // under the License.
 
 import { BasicUserInfo, DecodedIDTokenPayload } from "@asgardeo/auth-spa";
-import { RouteStatuses } from "../types/types";
+import { RouteStatuses } from "@/types/types";
 
 export enum Role {
   SALES_ADMIN = "SALES_ADMIN",

@@ -35,7 +35,7 @@ import {
 
 import React, { useState } from "react";
 
-import { CustomerTestimonialCardProps } from "../../../types/types";
+import { CustomerTestimonialCardProps } from "@/types/types";
 
 const CustomerTestimonialCard: React.FC<CustomerTestimonialCardProps> = ({
   testimonial,

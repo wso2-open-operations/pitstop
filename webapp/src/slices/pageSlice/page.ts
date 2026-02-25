@@ -30,7 +30,7 @@ import {
   ReorderSectionsPayload,
   UpdateCommentPayload,
   CustomTheme,
-} from "../../types/types";
+} from "@/types/types";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { 
   CONTENT_STATE_FAILED, 

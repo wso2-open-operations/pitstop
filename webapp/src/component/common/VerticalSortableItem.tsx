@@ -18,7 +18,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Box, IconButton} from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import { VerticalSortableItemProps } from "../../types/types";
+import { VerticalSortableItemProps } from "@/types/types";
 
 const VerticalSortableItem = ({
   id,

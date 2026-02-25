@@ -15,7 +15,7 @@
 // under the License.
 
 import { Box, Card, CardContent, Typography, Stack } from "@mui/material";
-import { ErrorHandlerProps } from "../../types/types";
+import { ErrorHandlerProps } from "@/types/types";
 import warningImage from "@assets/images/warning.svg";
 
 const ErrorHandler = (props: ErrorHandlerProps) => {

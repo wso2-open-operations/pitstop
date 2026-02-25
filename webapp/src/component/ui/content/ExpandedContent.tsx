@@ -35,7 +35,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
-import { CustomButton, CustomTheme, CommentsResponse } from "../../../types/types";
+import { CustomButton, CustomTheme, CommentsResponse } from "@/types/types";
 import { RootState, useAppSelector, useAppDispatch } from "@slices/store";
 import { addComment } from "@slices/pageSlice/page";
 import { enqueueSnackbarMessage } from "@slices/commonSlice/common";

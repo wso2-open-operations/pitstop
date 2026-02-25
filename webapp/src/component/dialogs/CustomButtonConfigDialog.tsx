@@ -48,7 +48,7 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import ArticleIcon from "@mui/icons-material/Article";
 import CloseIcon from "@mui/icons-material/Close";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { CustomButton } from "../../types/types";
+import { CustomButton } from "@/types/types";
 
 interface CustomButtonConfigDialogProps {
   open: boolean;

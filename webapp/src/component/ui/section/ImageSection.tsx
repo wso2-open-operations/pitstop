@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
 import { Role } from "@utils/types";
 import { IconButton } from "@component/common/Common";
 import { Typography, Box, Tooltip, Stack } from "@mui/material";
-import { ImageSectionProps } from "../../../types/types";
+import { ImageSectionProps } from "@/types/types";
 import getCroppedImg from "@utils/imageCrop";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 

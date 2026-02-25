@@ -31,7 +31,7 @@ import {
   UpdateRouteContentPayload,
   UpdateRoutePayload,
   reparentRoutesPayload,
-} from "../../types/types";
+} from "@/types/types";
 
 const initialState: RouteState = {
   stateMessage: null,

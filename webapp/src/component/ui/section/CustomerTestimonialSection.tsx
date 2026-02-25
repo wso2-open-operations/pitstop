@@ -32,7 +32,7 @@ import {
   selectCustomerTestimonials,
   selectCustomerTestimonialState,
 } from "@slices/customerTestimonialSlice/customerTestimonial";
-import { CustomerTestimonial } from "../../../types/types";
+import { CustomerTestimonial } from "@/types/types";
 import CustomerTestimonialCard from "@component/ui/content/CustomerTestimonialCard";
 import CustomerTestimonialDialogBox from "@component/dialogs/CustomerTestimonialDialogBox";
 import DeleteDialogBox from "@component/dialogs/DeleteDialogBox";

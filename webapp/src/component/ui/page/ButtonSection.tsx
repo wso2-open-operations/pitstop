@@ -31,7 +31,7 @@ import { createRouteContent, updateRouteContent, updateRouterPath } from "@slice
 import { RootState, useAppDispatch, useAppSelector } from "@slices/store";
 import { Role } from "@utils/types";
 
-import { RouteContentItem, RouteResponse } from "../../../types/types";
+import { RouteContentItem, RouteResponse } from "@/types/types";
 
 const ButtonSection = () => {
   const {

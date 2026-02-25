@@ -18,7 +18,7 @@ import React, { useEffect } from "react";
 import { Box, Stack, CircularProgress, Typography, Theme } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import Carousel from "../content/Carousel";
-import { ContentResponse, CustomTheme } from "../../../types/types";
+import { ContentResponse, CustomTheme } from "@/types/types";
 import { getTrendingContents } from "@slices/pageSlice/page";
 import { AppDispatch, RootState } from "@slices/store";
 import {

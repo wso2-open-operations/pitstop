@@ -22,7 +22,7 @@ import { useEffect } from "react";
 import { getPageData, resetPageData } from "@slices/pageSlice/page";
 import { updateRouterPath } from "@slices/routeSlice/route";
 import { useLocation, useNavigate } from "react-router-dom";
-import { RouteResponse } from "../../types/types";
+import { RouteResponse } from "@/types/types";
 // For matomo integration
 export declare let _paq: unknown[];
 

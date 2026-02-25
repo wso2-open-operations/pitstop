@@ -57,7 +57,7 @@ import {
 import { useAppDispatch, useAppSelector } from "@slices/store";
 import { RootState } from "@slices/store";
 
-import SortableChildItem from "../common/ChildSidebarSortableItem";
+import SortableChildItem from "@component/common/ChildSidebarSortableItem";
 
 interface ExtendedListItemLinkProps extends ListItemLinkProps {
   dragHandle?: React.ReactNode;

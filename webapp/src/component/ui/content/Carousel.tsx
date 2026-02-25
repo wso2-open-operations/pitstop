@@ -20,7 +20,7 @@ import { alpha } from "@mui/material/styles";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ComponentCard from "./Card";
-import { ContentResponse } from "../../../types/types";
+import { ContentResponse } from "@/types/types";
 
 interface CarouselProps {
   contentData: ContentResponse[];

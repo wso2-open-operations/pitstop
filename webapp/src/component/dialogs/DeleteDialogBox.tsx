@@ -18,7 +18,7 @@ import { RootState, useAppDispatch, useAppSelector } from "@slices/store";
 import { deleteContent } from "@slices/pageSlice/page";
 import { deleteSection } from "@slices/sectionSlice/section";
 import { deleteRoute, deleteRouteContent } from "@slices/routeSlice/route";
-import { DeleteDialogBoxProps } from "../../types/types";
+import { DeleteDialogBoxProps } from "@/types/types";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";

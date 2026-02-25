@@ -52,7 +52,7 @@ import {
   CustomerTestimonialDialogBoxProps,
   CustomerTestimonialCreatePayload,
   CustomerTestimonialUpdatePayload,
-} from "../../types/types";
+} from "@/types/types";
 
 const validationSchema = Yup.object({
   name: Yup.string()
