@@ -24,7 +24,7 @@ import {
   CustomerTestimonialCreatePayload,
   CustomerTestimonialUpdatePayload,
   RouteStatuses,
-} from "@/types/types";
+} from "../../types/types";
 
 interface CustomerTestimonialState {
   items: CustomerTestimonial[];
