@@ -492,8 +492,8 @@ def search_endpoint(
 
     sources = [
         {
-            # A "reference" result's text is a stand-in document's own text - never sent to the browser
-            "content": "" if r.file_extension == "reference" else r.content,
+            # Real here (backend-only response) - the caller must blank a "reference" result's text before it reaches a browser
+            "content": r.content,
             "title": r.title,
             "page": r.page,
             "similarityScore": r.similarity_score,
