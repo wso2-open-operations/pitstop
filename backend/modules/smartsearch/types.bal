@@ -52,6 +52,29 @@ public type SmartSearchResponse record {|
     types:ContentResponse[] contents = [];
 |};
 
+# The Python service's /search response - sources only, no answer yet.
+#
+# + sources - The matching document chunks
+type RawSearchResponse record {|
+    SmartSearchResult[] sources;
+|};
+
+# The Python service's /generate-answer response.
+#
+# + answer - The generated answer, or () if there was nothing to ground one in
+type GenerateAnswerResponse record {|
+    string? answer;
+|};
+
+# Sources narrowed down to ones the caller is actually authorized to see.
+#
+# + sources - The authorized sources
+# + contents - The real Pitstop content records behind them
+public type AuthorizedSources record {|
+    SmartSearchResult[] sources;
+    types:ContentResponse[] contents;
+|};
+
 # Body for the Python service's /ingest-drive-link.
 #
 # + driveLink - The link to read text from

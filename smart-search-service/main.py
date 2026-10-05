@@ -177,12 +177,6 @@ def _clear_search_cache() -> None:
         _search_cache.clear()
 
 
-def _forget_results(user_query: str, limit: int) -> None:
-    """Drops a remembered lookup once its answer has been written."""
-    with _search_cache_lock:
-        _search_cache.pop((user_query, limit), None)
-
-
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
@@ -488,12 +482,8 @@ def get_document_status(document_id: str = Path(..., pattern=r"^[0-9]+$")) -> di
 def search_endpoint(
     userQuery: str = Query(..., min_length=1),
     limit: int = Query(DEFAULT_SEARCH_RESULT_LIMIT, ge=1, le=50),
-    includeAnswer: bool = Query(True),
 ) -> dict:
-    """Tool 1: embeds the query and finds the closest matches by score.
-    Tool 2 (generate_answer) then writes an answer, but only runs when
-    Tool 1 actually found something to ground it in. includeAnswer=false
-    skips Tool 2, so the sources come back without waiting for the model."""
+    """Tool 1: embeds the query and finds the closest matches by score - sources only, no answer."""
     try:
         results = _find_results(userQuery, limit)
     except Exception as error:  # noqa: BLE001 - surfaced to the caller as a 500
@@ -517,14 +507,40 @@ def search_endpoint(
         for r in results
     ]
 
-    if not results or not includeAnswer:
-        return {"answer": None, "sources": sources}
+    return {"sources": sources}
 
+
+class ExcerptPayload(BaseModel):
+    content: str
+    title: str
+    unitLabel: str = "Page"
+    page: Optional[int] = None
+
+
+class GenerateAnswerRequest(BaseModel):
+    userQuery: str = Field(..., min_length=1)
+    # Only the caller's already-authorized excerpts - never re-fetched from Pinecone here
+    excerpts: list[ExcerptPayload]
+
+
+@app.post("/generate-answer")
+def generate_answer_endpoint(body: GenerateAnswerRequest) -> dict:
+    """Tool 2: writes an answer grounded in exactly the given excerpts, nothing else."""
+    if not body.excerpts:
+        return {"answer": None}
+
+    results = [
+        SearchResult(
+            content=e.content, title=e.title, page=e.page or 1, similarity_score=0.0,
+            document_id="", unit_label=e.unitLabel, file_extension="", source="",
+            drive_link="", native_link=None,
+        )
+        for e in body.excerpts
+    ]
     try:
-        answer = generate_answer(userQuery, results)
-        _forget_results(userQuery, limit)
-    except Exception:  # noqa: BLE001 - degrade gracefully rather than fail the search
-        logger.exception("Answer generation failed - returning sources without a generated answer")
+        answer = generate_answer(body.userQuery, results)
+    except Exception:  # noqa: BLE001 - degrade gracefully rather than fail the request
+        logger.exception("Answer generation failed")
         answer = None
 
-    return {"answer": answer, "sources": sources}
+    return {"answer": answer}

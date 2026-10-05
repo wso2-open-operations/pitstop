@@ -1865,14 +1865,28 @@ service http:InterceptableService / on new http:Listener(9090) {
     resource function get smart\-search(http:RequestContext ctx, string userQuery, boolean includeAnswer = true)
         returns smartsearch:SmartSearchResponse|http:InternalServerError {
 
-        smartsearch:SmartSearchResponse|error result = smartsearch:searchDocuments(userQuery, includeAnswer);
-        if result is error {
-            log:printError(constants:SMART_SEARCH_ERROR, result);
+        smartsearch:SmartSearchResult[]|error rawSources = smartsearch:searchDocuments(userQuery);
+        if rawSources is error {
+            log:printError(constants:SMART_SEARCH_ERROR, rawSources);
             return <http:InternalServerError>{
                 body: {message: constants:SMART_SEARCH_ERROR}
             };
         }
-        return smartsearch:filterToAuthorizedSources(ctx, result);
+
+        smartsearch:AuthorizedSources authorized = smartsearch:filterToAuthorizedSources(ctx, rawSources);
+
+        // Grounded only in the already-authorized sources, never the raw list
+        string? answer = ();
+        if includeAnswer {
+            string?|error generated = smartsearch:generateAnswer(userQuery, authorized.sources);
+            if generated is string {
+                answer = generated;
+            } else if generated is error {
+                log:printWarn("Smart Search: answer generation failed", generated);
+            }
+        }
+
+        return {answer, sources: authorized.sources, contents: authorized.contents};
     }
 
     # Download the original PDF of an indexed content, so it can be opened at a given page.
