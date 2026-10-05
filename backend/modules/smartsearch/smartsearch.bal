@@ -24,30 +24,18 @@ import ballerina/task;
 import ballerina/time;
 import ballerina/url;
 
-# Runs a search against the Smart Search service - sources only, filter before generating an answer.
+# Runs a search against the Smart Search service.
 #
 # + userQuery - What the user typed into the search box
-# + return - The matching sources, or an error
-public isolated function searchDocuments(string userQuery) returns SmartSearchResult[]|error {
+# + includeAnswer - False returns just the sources, without waiting for the generated answer
+# + return - A generated answer plus its sources, or an error
+public isolated function searchDocuments(string userQuery, boolean includeAnswer)
+    returns SmartSearchResponse|error {
+
     // Explicit encoding - a query can contain a comma, which Ballerina's
     // query-parameter parser otherwise treats as a list separator.
     string encodedQuery = check url:encode(userQuery, "UTF-8");
-    RawSearchResponse response = check smartSearchServiceClient->get(string `/search?userQuery=${encodedQuery}`);
-    return response.sources;
-}
-
-# Asks the Smart Search service to write an answer grounded only in already-authorized excerpts.
-#
-# + userQuery - What the user typed into the search box
-# + excerpts - The already-authorized sources to ground the answer in
-# + return - The generated answer, () if there was nothing to ground one in, or an error
-public isolated function generateAnswer(string userQuery, SmartSearchResult[] excerpts) returns string?|error {
-    if excerpts.length() == 0 {
-        return ();
-    }
-    GenerateAnswerResponse response =
-        check smartSearchServiceClient->post("/generate-answer", {userQuery, excerpts});
-    return response.answer;
+    return smartSearchServiceClient->get(string `/search?userQuery=${encodedQuery}&includeAnswer=${includeAnswer}`);
 }
 
 # Whether the caller may see this content - the same rule search uses. Denies on any doubt.
@@ -223,24 +211,26 @@ public isolated function isContentLinkIndexable(string contentType, string? cont
     return isIndexableLink(link);
 }
 
-# Narrows raw search sources down to ones the caller is actually allowed to see.
+# Narrows a raw search response down to sources whose document the caller
+# is actually allowed to see
 #
 # + ctx - Request object
-# + sources - The raw sources from the Smart Search service
-# + return - Only the sources (and their real content records) the caller is authorized to see
-public isolated function filterToAuthorizedSources(http:RequestContext ctx, SmartSearchResult[] sources)
-    returns AuthorizedSources {
+# + response - The raw response from the Smart Search service
+# + return - The response with only sources, contents and an answer the
+#            caller is authorized to see
+public isolated function filterToAuthorizedSources(http:RequestContext ctx, SmartSearchResponse response)
+    returns SmartSearchResponse {
 
     string[]|error userGroups = ctx.getWithType(authorization:REQUESTED_BY_USER_ROLES);
     string|error userEmail = ctx.getWithType(authorization:REQUESTED_BY_USER_EMAIL);
     if userGroups is error || userEmail is error {
-        return {sources: [], contents: []};
+        return {answer: (), sources: [], contents: []};
     }
     boolean isUser = !authorization:hasPermission([authorization:authorizedRoles.adminRole], userGroups);
 
     // One document can contribute several passages, but stays one card.
     int[] contentIds = [];
-    foreach SmartSearchResult searchResult in sources {
+    foreach SmartSearchResult searchResult in response.sources {
         int|error contentId = int:fromString(searchResult.documentId);
         if contentId is error || contentIds.indexOf(contentId) !is () {
             continue;
@@ -248,13 +238,13 @@ public isolated function filterToAuthorizedSources(http:RequestContext ctx, Smar
         contentIds.push(contentId);
     }
     if contentIds.length() == 0 {
-        return {sources: [], contents: []};
+        return {answer: (), sources: [], contents: []};
     }
 
     types:ContentResponse[]|error matched = database:getContentsByIds(contentIds, isUser, userEmail);
     if matched is error {
         log:printWarn("Smart Search: could not verify source authorization", matched);
-        return {sources: [], contents: []};
+        return {answer: (), sources: [], contents: []};
     }
 
     map<boolean> authorizedIds = {};
@@ -263,13 +253,17 @@ public isolated function filterToAuthorizedSources(http:RequestContext ctx, Smar
     }
 
     SmartSearchResult[] authorizedSources = [];
-    foreach SmartSearchResult searchResult in sources {
+    foreach SmartSearchResult searchResult in response.sources {
         if authorizedIds.hasKey(searchResult.documentId) {
             authorizedSources.push(searchResult);
         }
     }
 
-    return {sources: authorizedSources, contents: matched};
+    return {
+        answer: authorizedSources.length() == response.sources.length() ? response.answer : (),
+        sources: authorizedSources,
+        contents: matched
+    };
 }
 
 # Saves an indexing failure, logging a warning if it can't be saved.
