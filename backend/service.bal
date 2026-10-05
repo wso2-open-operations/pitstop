@@ -1886,8 +1886,7 @@ service http:InterceptableService / on new http:Listener(9090) {
             }
         }
 
-        smartsearch:SmartSearchResult[] browserSources = smartsearch:hideReferenceContentFromBrowser(authorized.sources);
-        return {answer, sources: browserSources, contents: authorized.contents};
+        return {answer, sources: authorized.sources, contents: authorized.contents};
     }
 
     # Download the original PDF of an indexed content, so it can be opened at a given page.

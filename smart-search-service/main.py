@@ -49,6 +49,7 @@ from vectorstore import (
     delete_by_document_id,
     delete_stale_chunks,
     document_exists,
+    fetch_page_text,
     find_document_source,
     search,
     upsert_chunks,
@@ -492,8 +493,8 @@ def search_endpoint(
 
     sources = [
         {
-            # Real here (backend-only response) - the caller must blank a "reference" result's text before it reaches a browser
-            "content": r.content,
+            # A "reference" result's text is a stand-in document's own text - never sent to the browser
+            "content": "" if r.file_extension == "reference" else r.content,
             "title": r.title,
             "page": r.page,
             "similarityScore": r.similarity_score,
@@ -511,32 +512,38 @@ def search_endpoint(
 
 
 class ExcerptPayload(BaseModel):
-    content: str
+    content: str = ""
     title: str
     unitLabel: str = "Page"
     page: Optional[int] = None
+    documentId: str = ""
+    fileExtension: str = ""
 
 
 class GenerateAnswerRequest(BaseModel):
     userQuery: str = Field(..., min_length=1)
-    # Only the caller's already-authorized excerpts - never re-fetched from Pinecone here
+    # Only the caller's already-authorized excerpts - reference text is looked up by documentId and page
     excerpts: list[ExcerptPayload]
 
 
 @app.post("/generate-answer")
 def generate_answer_endpoint(body: GenerateAnswerRequest) -> dict:
     """Tool 2: writes an answer grounded in exactly the given excerpts, nothing else."""
-    if not body.excerpts:
+    results = []
+    for e in body.excerpts:
+        content = e.content
+        if e.fileExtension == "reference" and e.documentId and e.page is not None:
+            content = fetch_page_text(e.documentId, e.page)
+        if not content:
+            continue
+        results.append(SearchResult(
+            content=content, title=e.title, page=e.page or 1, similarity_score=0.0,
+            document_id=e.documentId, unit_label=e.unitLabel, file_extension=e.fileExtension, source="",
+            drive_link="", native_link=None,
+        ))
+    if not results:
         return {"answer": None}
 
-    results = [
-        SearchResult(
-            content=e.content, title=e.title, page=e.page or 1, similarity_score=0.0,
-            document_id="", unit_label=e.unitLabel, file_extension="", source="",
-            drive_link="", native_link=None,
-        )
-        for e in body.excerpts
-    ]
     try:
         answer = generate_answer(body.userQuery, results)
     except Exception:  # noqa: BLE001 - degrade gracefully rather than fail the request

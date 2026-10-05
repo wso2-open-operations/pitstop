@@ -272,22 +272,6 @@ public isolated function filterToAuthorizedSources(http:RequestContext ctx, Smar
     return {sources: authorizedSources, contents: matched};
 }
 
-# A "reference" source's content is the stand-in document's own text - safe to ground an answer in, but never meant for the browser. Call only after generateAnswer() has already used the real text.
-#
-# + sources - Already-authorized sources, with real reference text still intact
-# + return - The same sources, with every reference source's content blanked out
-public isolated function hideReferenceContentFromBrowser(SmartSearchResult[] sources) returns SmartSearchResult[] {
-    SmartSearchResult[] browserSources = [];
-    foreach SmartSearchResult sourceItem in sources {
-        SmartSearchResult sourceCopy = sourceItem.clone();
-        if sourceCopy.fileExtension == "reference" {
-            sourceCopy.content = "";
-        }
-        browserSources.push(sourceCopy);
-    }
-    return browserSources;
-}
-
 # Saves an indexing failure, logging a warning if it can't be saved.
 #
 # + contentId - The content that failed to index

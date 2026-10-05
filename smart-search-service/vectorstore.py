@@ -277,6 +277,24 @@ def find_document_source(document_id: str) -> Optional[tuple[str, str]]:
     return metadata.get("driveLink", ""), metadata.get("fileExtension", "")
 
 
+def fetch_page_text(document_id: str, page: int) -> str:
+    """Joins the stored text of every chunk on one page of a document."""
+    response = _session.post(
+        f"{PINECONE_SERVICE_URL}/query",
+        headers=_HEADERS,
+        json={
+            "vector": _FILTER_ONLY_VECTOR,
+            "topK": 1000,
+            "includeMetadata": True,
+            "filter": {"documentId": {"$eq": document_id}, "page": {"$eq": page}},
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    matches = response.json().get("matches", [])
+    return "\n".join(m.get("metadata", {}).get("content", "") for m in matches)
+
+
 def delete_stale_chunks(document_id: str, keep_count: int) -> None:
     """Removes chunks left over from an earlier version of this document -
     both extras from a longer version and any written before chunk ids
